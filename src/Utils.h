@@ -19,5 +19,7 @@ TasksRet getTasksOfPid(PID_t pid);
 std::string makeTaskPath(PID_t pid, TaskId_t tid);
 std::string makeTaskStatPath(PID_t pid, TaskId_t tid);
 
+PID_t getFirstPidByName(const std::string& name);
+
 }  // namespace Utils
 }  // namespace cpu_monitor

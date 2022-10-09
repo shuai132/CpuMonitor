@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
   }
 
   int ret;
-  while ((ret = getopt(argc, argv, "s:c::p:")) != -1) {
+  while ((ret = getopt(argc, argv, "s:c::p:n:")) != -1) {
     switch (ret) {
       case 's': {
         s_updateIntervalSec = std::stoi(optarg, nullptr, 10);
@@ -86,6 +86,16 @@ int main(int argc, char** argv) {
       case 'p': {
         auto pid = std::strtoul(optarg, nullptr, 10);
         monitorPid(pid);
+      } break;
+      case 'n': {
+        auto& name = optarg;
+        LOGD("program name: %s", name);
+        auto pid = Utils::getFirstPidByName(name);
+        if (pid == 0) {
+          LOGE("pid not found by name: %s", name);
+        } else {
+          monitorPid(pid);
+        }
       } break;
       default:
         showHelp();
