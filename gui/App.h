@@ -12,22 +12,12 @@ class App : noncopyable {
   App();
 
  public:
-  void onDraw();
+  void poll();
 
   void dispatch(const std::function<void()>& task);
 
   void post(std::function<void()> task);
 
  private:
-  void initGUI();
-
- public:
-  static const int MainWindowWidth = 1280;
-  static const int MainWindowHeight = 720;
-  static const char* MainWindowTitle;
-
- private:
   asio::io_context context_;
-
-  uint32_t windowFlags_ = 0;
 };

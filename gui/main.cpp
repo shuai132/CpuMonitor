@@ -12,6 +12,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl2.h"
+#include "ui/uidef.h"
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
 #endif
@@ -32,10 +33,10 @@ int main(int, char**) {
   // Setup window
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) return 1;
-  GLFWwindow* window = glfwCreateWindow(App::MainWindowWidth, App::MainWindowHeight, App::MainWindowTitle, nullptr, nullptr);
+  GLFWwindow* window = glfwCreateWindow(ui::MainWindowWidth, ui::MainWindowHeight, ui::MainWindowTitle, nullptr, nullptr);
   if (window == nullptr) return 1;
 
-  glfwSetWindowSizeLimits(window, App::MainWindowWidth, App::MainWindowHeight, App::MainWindowWidth, App::MainWindowHeight);
+  glfwSetWindowSizeLimits(window, ui::MainWindowWidth, ui::MainWindowHeight, ui::MainWindowWidth, ui::MainWindowHeight);
 
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);  // Enable vsync
@@ -90,7 +91,7 @@ int main(int, char**) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    App::instance()->onDraw();
+    App::instance()->poll();
 
     // Rendering
     ImGui::Render();

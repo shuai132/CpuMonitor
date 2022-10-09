@@ -1,9 +1,8 @@
 #include "App.h"
 
-#include "imgui.h"
-#include "ui/uidef.h"
+#include "ui/Home.h"
 
-using namespace ImGui;
+static std::unique_ptr<Home> home;
 
 App* App::instance() {
   static App instance;
@@ -11,22 +10,13 @@ App* App::instance() {
 }
 
 App::App() {
-  initGUI();
+  home = std::make_unique<Home>();
 }
 
-void App::onDraw() {
+void App::poll() {
   context_.poll();
   context_.restart();
-
-  ImGui::Begin("MainWindow", nullptr, windowFlags_);  // NOLINT
-  ImGui::SetWindowPos({0, 0});
-  ImGui::SetWindowSize({MainWindowWidth, MainWindowHeight});
-  PushItemWidth(UI_ITEM_WIDTH);
-
-  Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / GetIO().Framerate, GetIO().Framerate);
-
-  PopItemWidth();
-  ImGui::End();
+  home->onDraw();
 }
 
 void App::dispatch(const std::function<void()>& task) {
@@ -36,12 +26,3 @@ void App::dispatch(const std::function<void()>& task) {
 void App::post(std::function<void()> task) {
   context_.post(std::move(task));
 }
-
-void App::initGUI() {
-  windowFlags_ |= ImGuiWindowFlags_NoMove;
-  windowFlags_ |= ImGuiWindowFlags_NoResize;
-  windowFlags_ |= ImGuiWindowFlags_NoCollapse;
-  windowFlags_ |= ImGuiWindowFlags_NoTitleBar;
-}
-
-const char* App::MainWindowTitle = "CpuMonitor";

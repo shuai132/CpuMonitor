@@ -44,6 +44,6 @@ endif ()
 
 include_directories(base)
 
-file(GLOB SRCS *.cpp)
+file(GLOB_RECURSE SRCS *.cpp)
 add_executable(${PROJECT_NAME} ${BUILD_AS_APP} ${SRCS})
 target_link_libraries(${PROJECT_NAME} pthread)
