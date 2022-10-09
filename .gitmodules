@@ -1,0 +1,3 @@
+[submodule "thirdparty/asio_net"]
+	path = thirdparty/asio_net
+	url = git@github.com:shuai132/asio_net.git
