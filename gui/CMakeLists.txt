@@ -1,8 +1,17 @@
-project(cpu_monitor_gui)
+cmake_minimum_required(VERSION 3.15)
+
+set(CMAKE_CXX_STANDARD 14)
+add_compile_options(-Wall)
+
+project(CpuMonitor)
 
 # OpenGL
 find_package(OpenGL REQUIRED)
 link_libraries(${OPENGL_LIBRARIES})
+
+# flatbuffers
+add_subdirectory(../thirdparty/flatbuffers flatbuffers)
+link_libraries(flatbuffers)
 
 # GLFW
 option(GLFW_BUILD_EXAMPLES "Build the GLFW example programs" OFF)
