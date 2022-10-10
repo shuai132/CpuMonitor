@@ -1,6 +1,8 @@
 #include <unistd.h>
 
+#include <algorithm>
 #include <memory>
+#include <set>
 
 #include "CpuMonitor.h"
 #include "CpuMonitorAll.h"
@@ -26,20 +28,25 @@ static void monitorCpu() {
 }
 
 static void monitorPid(PID_t pid) {
-  auto ret = Utils::getTasksOfPid(pid);
-  LOGI("get task info: pid: %u, ok: %d, num: %zu", pid, ret.ok, ret.ids.size());
-  if (!ret.ok) {
-    LOGE("pid not found: %u", pid);
-    return;
-  }
-
   CpuMonitorAll cpu;
-  std::vector<std::unique_ptr<TaskMonitor>> tasks;
-  for (auto tid : ret.ids) {
-    LOGI("thread id: %d", tid);
-    tasks.push_back(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, tid), [&cpu] {
-      return cpu.ave->totalTime;
-    }));
+  const auto totalTimeImpl = [&cpu] {
+    return cpu.ave->totalTime;
+  };
+  std::set<std::unique_ptr<TaskMonitor>> tasks;
+
+  // init monitor
+  {
+    auto ret = Utils::getTasksOfPid(pid);
+    LOGI("get task info: pid: %u, ok: %d, num: %zu", pid, ret.ok, ret.ids.size());
+    if (!ret.ok) {
+      LOGE("pid not found: %u", pid);
+      return;
+    }
+
+    for (auto tid : ret.ids) {
+      LOGI("thread id: %d", tid);
+      tasks.insert(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, tid), totalTimeImpl));
+    }
   }
 
   for (;;) {
@@ -49,12 +56,57 @@ static void monitorPid(PID_t pid) {
 
     for (auto& item : tasks) {
       bool ok = item->update();
-      if (!ok) {
-        LOGE("thread may exit");
+      if (ok) {
+        printf("name: %s, id: %lu, usage: %.2f%%\n", item->stat().name.c_str(), item->stat().id, item->usage * 100);
+      } else {
+        printf("thread exit: name: %s, id: %lu\n", item->stat().name.c_str(), item->stat().id);
       }
-      printf("name: %s, id: %lu, usage: %.2f%%\n", item->stat().name.c_str(), item->stat().id, item->usage * 100);
     }
     printf("\n");
+
+    const auto& taskRet = Utils::getTasksOfPid(pid);
+    if (!taskRet.ok) {
+      printf("progress exit! will wait...\n");
+      return;
+    }
+    const auto& tasksNow = taskRet.ids;
+
+    // 删除已不存在的线程
+    const auto isTaskAlive = [&tasksNow](TaskId_t taskId) {
+      return std::find(tasksNow.cbegin(), tasksNow.cend(), taskId) != tasksNow.cend();
+    };
+    for (auto iter = tasks.begin(); iter != tasks.cend();) {
+      // delete not cared task
+      if (!isTaskAlive(iter->get()->stat().id)) {
+        iter = tasks.erase(iter);
+      } else {
+        ++iter;
+      }
+    }
+
+    // 添加新增的线程
+    const auto isNewTask = [&tasks](TaskId_t taskId) {
+      return std::find_if(tasks.cbegin(), tasks.cend(), [&](const std::unique_ptr<TaskMonitor>& monitor) {
+               return monitor->stat().id == taskId;
+             }) == tasks.cend();
+    };
+    for (const auto& item : tasksNow) {
+      if (isNewTask(item)) {
+        tasks.insert(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, item), totalTimeImpl));
+      }
+    }
+  }
+}
+
+static void monitorProgram(const std::string& name) {
+  for (;;) {
+    auto pid = Utils::getFirstPidByName(name);
+    if (pid == 0) {
+      LOGE("pid not found by name: %s", name.c_str());
+    } else {
+      monitorPid(pid);
+    }
+    sleep(1);
   }
 }
 
@@ -90,12 +142,7 @@ int main(int argc, char** argv) {
       case 'n': {
         auto& name = optarg;
         LOGD("program name: %s", name);
-        auto pid = Utils::getFirstPidByName(name);
-        if (pid == 0) {
-          LOGE("pid not found by name: %s", name);
-        } else {
-          monitorPid(pid);
-        }
+        monitorProgram(name);
       } break;
       default:
         showHelp();

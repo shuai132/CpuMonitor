@@ -22,6 +22,15 @@ int main() {
     };
   }).detach();
 
+  // 模拟动态得新增和删除线程
+  for (;;) {
+    std::thread([] {
+      pthread_setname_np(pthread_self(), "cpu_test_x");
+      std::this_thread::sleep_for(std::chrono::seconds(3));
+    }).join();
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+  }
+
   getchar();
 
   return 0;
