@@ -1,0 +1,12 @@
+namespace cpu_monitor.msg;
+
+table CpuInfo {
+  name: string;
+  usage: float32;
+}
+
+table CpuMsg {
+  infos: [CpuInfo];
+}
+
+root_type CpuMsg;

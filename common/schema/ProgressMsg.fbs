@@ -1,0 +1,17 @@
+namespace cpu_monitor.msg;
+
+table ThreadInfo {
+  name: string;
+  usage: float32;
+}
+
+table ProgressInfo {
+  name: string;
+  infos: [ThreadInfo];
+}
+
+table ProgressMsg {
+  infos: [ProgressInfo];
+}
+
+root_type ProgressMsg;

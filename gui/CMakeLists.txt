@@ -10,7 +10,8 @@ find_package(OpenGL REQUIRED)
 link_libraries(${OPENGL_LIBRARIES})
 
 # flatbuffers
-add_subdirectory(../thirdparty/flatbuffers flatbuffers)
+include(../cmake/flatbuffer_cfg.cmake)
+add_subdirectory(../thirdparty/flatbuffers flatbuffers EXCLUDE_FROM_ALL)
 link_libraries(flatbuffers)
 
 # GLFW
@@ -19,7 +20,7 @@ option(GLFW_BUILD_TESTS "Build the GLFW test programs" OFF)
 option(GLFW_BUILD_DOCS "Build the GLFW documentation" OFF)
 option(GLFW_INSTALL "Generate installation target" OFF)
 option(GLFW_DOCUMENT_INTERNALS "Include internals in documentation" OFF)
-add_subdirectory(../thirdparty/glfw glfw)
+add_subdirectory(../thirdparty/glfw glfw EXCLUDE_FROM_ALL)
 link_libraries(glfw)
 
 # ImGui
@@ -39,6 +40,9 @@ link_libraries(imgui)
 # asio
 add_definitions(-DASIO_STANDALONE)
 include_directories(../thirdparty/asio/include)
+
+# common
+add_subdirectory(../common common)
 
 if (MINGW)
     link_libraries(ws2_32)
