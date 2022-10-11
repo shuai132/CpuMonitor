@@ -17,3 +17,5 @@ add_custom_target(flatc_schema
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/schema_gen
         )
 add_dependencies(flatc_schema flatc)
+
+add_subdirectory(test EXCLUDE_FROM_ALL)

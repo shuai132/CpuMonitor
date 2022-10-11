@@ -1,0 +1,2 @@
+link_libraries(cpu_monitor_common)
+add_executable(cpu_monitor_common_test main.cpp)
