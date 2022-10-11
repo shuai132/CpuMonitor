@@ -13,7 +13,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         )
 
 add_custom_target(flatc_schema
-        COMMAND ${CMAKE_BINARY_DIR}/gui/flatbuffers/flatc --cpp ../schema/*.fbs
+        COMMAND ${CMAKE_BINARY_DIR}/gui/flatbuffers/flatc --cpp --gen-object-api ../schema/*.fbs
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/schema_gen
         )
 add_dependencies(flatc_schema flatc)
