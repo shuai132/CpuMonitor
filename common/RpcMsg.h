@@ -4,11 +4,11 @@
 namespace cpu_monitor {
 
 template <typename T, size_t InitialSize = 1024>
-struct RpcMsg : public RpcCore::Message {
+struct RpcMsg : RpcCore::Message {
   using TableType = typename T::TableType;
   std::string serialize() const override {
     flatbuffers::FlatBufferBuilder fbb(InitialSize);
-    auto offset = T::TableType::Pack(fbb, &msg);
+    auto offset = TableType::Pack(fbb, &msg);
     fbb.Finish(offset);
     auto data = fbb.GetBufferPointer();
     auto size = fbb.GetSize();
