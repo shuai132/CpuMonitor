@@ -5,6 +5,8 @@
 #include <set>
 
 #include "CpuMonitorAll.h"
+#include "CpuMsg_generated.h"
+#include "RpcMsg.h"
 #include "TaskMonitor.h"
 #include "Utils.h"
 #include "asio.hpp"
@@ -50,6 +52,34 @@ static void initRpcTask() {
   });
 }
 
+static void sendNowCpuInfos() {
+  if (!s_rpc) return;
+
+  // cpu info
+  {
+    RpcMsg<msg::CpuMsgT> msg;
+    for (const auto& item : s_monitor_cpu->cores) {
+      auto info = std::make_unique<msg::CpuInfoT>();
+      info->name = item->stat().name;
+      info->usage = item->usage;
+      msg.msg.infos.push_back(std::move(info));
+    }
+    s_rpc->createRequest()->msg(msg)->noRsp()->call();
+  }
+
+  // progress info
+  {
+    RpcMsg<msg::CpuMsgT> msg;
+    for (const auto& item : s_monitor_tasks) {
+      auto info = std::make_unique<msg::CpuInfoT>();
+      info->name = item->stat().name;
+      info->usage = item->usage;
+      msg.msg.infos.push_back(std::move(info));
+    }
+    s_rpc->createRequest()->msg(msg)->noRsp()->call();
+  }
+}
+
 static void runServer() {
   using namespace asio_net;
   s_rpc_server = std::make_unique<rpc_server>(*s_context, 8088, 1024 * 1024 * 1);
@@ -75,10 +105,12 @@ static void runServer() {
   server->start(true);
 }
 
-static bool update(PID_t pid) {
+static void updateCpu() {
   s_monitor_cpu->update(true);
   printf("system %s usage: %.2f%%\n", s_monitor_cpu->ave->stat().name, s_monitor_cpu->ave->usage);
+}
 
+static bool updatePid(PID_t pid) {
   for (auto& item : s_monitor_tasks) {
     bool ok = item->update();
     if (ok) {
@@ -147,9 +179,11 @@ static bool initMonitor() {
 static void asyncNextUpdate() {
   s_timer_update->expires_after(std::chrono::milliseconds(s_update_interval_ms));
   s_timer_update->async_wait([](asio::error_code ec) {
+    updateCpu();
     for (const auto& pid : s_monitor_pids) {
-      update(pid);
+      updatePid(pid);
     }
+    sendNowCpuInfos();
     asyncNextUpdate();
   });
 }
