@@ -18,6 +18,10 @@ class App : noncopyable {
 
   void post(std::function<void()> task);
 
+  asio::io_context& context() {
+    return context_;
+  }
+
  private:
   asio::io_context context_;
 };

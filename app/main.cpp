@@ -64,7 +64,7 @@ static void sendNowCpuInfos() {
       info->usage = item->usage;
       msg.msg.infos.push_back(std::move(info));
     }
-    s_rpc->createRequest()->msg(msg)->noRsp()->call();
+    s_rpc->createRequest()->cmd("on_cpm_msg")->msg(msg)->noRsp()->call();
   }
 
   // progress info
@@ -76,7 +76,7 @@ static void sendNowCpuInfos() {
       info->usage = item->usage;
       msg.msg.infos.push_back(std::move(info));
     }
-    s_rpc->createRequest()->msg(msg)->noRsp()->call();
+    s_rpc->createRequest()->cmd("on_progress_msg")->msg(msg)->noRsp()->call();
   }
 }
 
@@ -98,6 +98,7 @@ static void runServer() {
     };
 
     s_rpc = session->rpc;
+    s_dispose = std::make_shared<RpcCore::Dispose>();
     initRpcTask();
   };
 

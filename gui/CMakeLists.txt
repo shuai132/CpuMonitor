@@ -37,10 +37,6 @@ add_library(imgui
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${GL_DIR} ${IMGUI_DIR}/backends)
 link_libraries(imgui)
 
-# asio
-add_definitions(-DASIO_STANDALONE)
-include_directories(../thirdparty/asio/include)
-
 # common
 add_subdirectory(../common common)
 
@@ -55,8 +51,11 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
     set(BUILD_AS_APP WIN32 MACOSX_BUNDLE)
 endif ()
 
-include_directories(base)
+include_directories(
+        .
+        base
+)
 
 file(GLOB_RECURSE SRCS *.cpp)
 add_executable(${PROJECT_NAME} ${BUILD_AS_APP} ${SRCS})
-target_link_libraries(${PROJECT_NAME} pthread)
+target_link_libraries(${PROJECT_NAME} pthread cpu_monitor_common)
