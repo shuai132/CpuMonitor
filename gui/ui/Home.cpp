@@ -102,6 +102,20 @@ void Home::onDraw() const {
             return ImPlotPoint{(double)idx, s_msg_cpus[idx].ave->usage};
           },
           nullptr, (int)s_msg_cpus.size());
+
+      // shade
+      ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+      ImPlot::PlotShadedG(
+          s_msg_cpus.front().ave->name.c_str(),
+          (ImPlotGetter)[](int idx, void* user_data) {
+            return ImPlotPoint{(double)idx, 0};
+          },
+          nullptr,
+          (ImPlotGetter)[](int idx, void* user_data) {
+            return ImPlotPoint{(double)idx, s_msg_cpus[idx].ave->usage};
+          },
+          nullptr, (int)s_msg_cpus.size(), 0);
+      ImPlot::PopStyleVar();
     }
     ImPlot::EndPlot();
   }
@@ -135,8 +149,12 @@ void Home::onDraw() const {
     }
     ImPlot::EndPlot();
   }
-  //  bool open = true;
-  //  ImPlot::ShowDemoWindow(&open);
+
+  // plot demo
+  if (0) {
+    bool open = true;
+    ImPlot::ShowDemoWindow(&open);
+  }
   ImGui::End();
 }
 
