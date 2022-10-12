@@ -10,7 +10,9 @@ App* App::instance() {
 }
 
 App::App() {
-  home = std::make_unique<Home>();
+  context_.post([]{
+    home = std::make_unique<Home>();
+  });
 }
 
 void App::poll() {

@@ -20,6 +20,8 @@ static std::shared_ptr<RpcCore::Dispose> s_dispose;
 static std::vector<msg::CpuMsgT> s_msg_cpus;
 static std::map<uint32_t, std::vector<decltype(msg::ProgressMsgT::infos)>> s_msg_pids;
 
+static std::unique_ptr<asio::steady_timer> s_timer_connect;
+
 static void initRpcTask() {
   s_rpc->subscribe<RpcMsg<msg::CpuMsgT>>("on_cpm_msg", [](RpcMsg<msg::CpuMsgT> msg) {
     s_msg_cpus.push_back(std::move(msg.msg));
@@ -30,15 +32,34 @@ static void initRpcTask() {
   });
 }
 
+static void startAutoConnect();
+
 static void connectServer() {
   s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context());
-  s_rpc_client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
+  auto& client = s_rpc_client;
+  client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
     LOGI("on_open");
     s_rpc = std::move(rpc);
     initRpcTask();
   };
+  client->on_close = [] {
+    s_rpc = nullptr;
+    startAutoConnect();
+  };
+  client->on_open_failed = [] {
+    startAutoConnect();
+  };
   LOGI("try open...");
-  s_rpc_client->open("10.238.21.156", "8088");
+  client->open("10.238.21.156", "8088");
+}
+
+static void startAutoConnect() {
+  s_timer_connect->expires_after(std::chrono::seconds(1));
+  s_timer_connect->async_wait([](asio::error_code ec) {
+    if (!s_rpc) {
+      connectServer();
+    }
+  });
 }
 
 void Home::onDraw() const {
@@ -130,6 +151,9 @@ void Home::initGUI() {
 
 Home::Home() {
   initGUI();
+
+  s_timer_connect = std::make_unique<asio::steady_timer>(App::instance()->context());
+  startAutoConnect();
 }
 
 Home::~Home() {
