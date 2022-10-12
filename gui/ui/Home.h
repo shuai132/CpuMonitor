@@ -7,6 +7,7 @@
 class Home : noncopyable {
  public:
   Home();
+  ~Home();
 
  public:
   void onDraw() const;

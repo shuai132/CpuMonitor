@@ -6,6 +6,7 @@
 
 #include "CpuMonitorAll.h"
 #include "CpuMsg_generated.h"
+#include "ProgressMsg_generated.h"
 #include "RpcMsg.h"
 #include "TaskMonitor.h"
 #include "Utils.h"
@@ -58,25 +59,33 @@ static void sendNowCpuInfos() {
   // cpu info
   {
     RpcMsg<msg::CpuMsgT> msg;
+    // ave
+    {
+      auto info = std::make_unique<msg::CpuInfoT>();
+      info->name = s_monitor_cpu->ave->stat().name;
+      info->usage = s_monitor_cpu->ave->usage;
+      msg.msg.ave = std::move(info);
+    }
+    // cores
     for (const auto& item : s_monitor_cpu->cores) {
       auto info = std::make_unique<msg::CpuInfoT>();
       info->name = item->stat().name;
       info->usage = item->usage;
-      msg.msg.infos.push_back(std::move(info));
+      msg.msg.cores.push_back(std::move(info));
     }
-    s_rpc->createRequest()->cmd("on_cpm_msg")->msg(msg)->noRsp()->call();
+    s_rpc->createRequest()->cmd("on_cpm_msg")->msg(msg)->call();
   }
 
   // progress info
   {
-    RpcMsg<msg::CpuMsgT> msg;
+    RpcMsg<msg::ProgressMsgT> msg;
     for (const auto& item : s_monitor_tasks) {
-      auto info = std::make_unique<msg::CpuInfoT>();
+      auto info = std::make_unique<msg::ProgressInfoT>();
       info->name = item->stat().name;
-      info->usage = item->usage;
+      // todo: infos
       msg.msg.infos.push_back(std::move(info));
     }
-    s_rpc->createRequest()->cmd("on_progress_msg")->msg(msg)->noRsp()->call();
+    s_rpc->createRequest()->cmd("on_progress_msg")->msg(msg)->call();
   }
 }
 

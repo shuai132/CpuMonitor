@@ -6,7 +6,8 @@ table CpuInfo {
 }
 
 table CpuMsg {
-  infos: [CpuInfo];
+  ave: CpuInfo;
+  cores: [CpuInfo];
 }
 
 root_type CpuMsg;

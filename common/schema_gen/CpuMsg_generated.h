@@ -101,7 +101,8 @@ flatbuffers::Offset<CpuInfo> CreateCpuInfo(flatbuffers::FlatBufferBuilder &_fbb,
 
 struct CpuMsgT : public flatbuffers::NativeTable {
   typedef CpuMsg TableType;
-  std::vector<std::unique_ptr<cpu_monitor::msg::CpuInfoT>> infos{};
+  std::unique_ptr<cpu_monitor::msg::CpuInfoT> ave{};
+  std::vector<std::unique_ptr<cpu_monitor::msg::CpuInfoT>> cores{};
   CpuMsgT() = default;
   CpuMsgT(const CpuMsgT &o);
   CpuMsgT(CpuMsgT&&) FLATBUFFERS_NOEXCEPT = default;
@@ -112,16 +113,22 @@ struct CpuMsg FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef CpuMsgT NativeTableType;
   typedef CpuMsgBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_INFOS = 4
+    VT_AVE = 4,
+    VT_CORES = 6
   };
-  const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *infos() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *>(VT_INFOS);
+  const cpu_monitor::msg::CpuInfo *ave() const {
+    return GetPointer<const cpu_monitor::msg::CpuInfo *>(VT_AVE);
+  }
+  const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *cores() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *>(VT_CORES);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyOffset(verifier, VT_INFOS) &&
-           verifier.VerifyVector(infos()) &&
-           verifier.VerifyVectorOfTables(infos()) &&
+           VerifyOffset(verifier, VT_AVE) &&
+           verifier.VerifyTable(ave()) &&
+           VerifyOffset(verifier, VT_CORES) &&
+           verifier.VerifyVector(cores()) &&
+           verifier.VerifyVectorOfTables(cores()) &&
            verifier.EndTable();
   }
   CpuMsgT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -133,8 +140,11 @@ struct CpuMsgBuilder {
   typedef CpuMsg Table;
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
-  void add_infos(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> infos) {
-    fbb_.AddOffset(CpuMsg::VT_INFOS, infos);
+  void add_ave(flatbuffers::Offset<cpu_monitor::msg::CpuInfo> ave) {
+    fbb_.AddOffset(CpuMsg::VT_AVE, ave);
+  }
+  void add_cores(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> cores) {
+    fbb_.AddOffset(CpuMsg::VT_CORES, cores);
   }
   explicit CpuMsgBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -149,19 +159,23 @@ struct CpuMsgBuilder {
 
 inline flatbuffers::Offset<CpuMsg> CreateCpuMsg(
     flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> infos = 0) {
+    flatbuffers::Offset<cpu_monitor::msg::CpuInfo> ave = 0,
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> cores = 0) {
   CpuMsgBuilder builder_(_fbb);
-  builder_.add_infos(infos);
+  builder_.add_cores(cores);
+  builder_.add_ave(ave);
   return builder_.Finish();
 }
 
 inline flatbuffers::Offset<CpuMsg> CreateCpuMsgDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *infos = nullptr) {
-  auto infos__ = infos ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>(*infos) : 0;
+    flatbuffers::Offset<cpu_monitor::msg::CpuInfo> ave = 0,
+    const std::vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *cores = nullptr) {
+  auto cores__ = cores ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>(*cores) : 0;
   return cpu_monitor::msg::CreateCpuMsg(
       _fbb,
-      infos__);
+      ave,
+      cores__);
 }
 
 flatbuffers::Offset<CpuMsg> CreateCpuMsg(flatbuffers::FlatBufferBuilder &_fbb, const CpuMsgT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
@@ -195,13 +209,15 @@ inline flatbuffers::Offset<CpuInfo> CreateCpuInfo(flatbuffers::FlatBufferBuilder
       _usage);
 }
 
-inline CpuMsgT::CpuMsgT(const CpuMsgT &o) {
-  infos.reserve(o.infos.size());
-  for (const auto &infos_ : o.infos) { infos.emplace_back((infos_) ? new cpu_monitor::msg::CpuInfoT(*infos_) : nullptr); }
+inline CpuMsgT::CpuMsgT(const CpuMsgT &o)
+      : ave((o.ave) ? new cpu_monitor::msg::CpuInfoT(*o.ave) : nullptr) {
+  cores.reserve(o.cores.size());
+  for (const auto &cores_ : o.cores) { cores.emplace_back((cores_) ? new cpu_monitor::msg::CpuInfoT(*cores_) : nullptr); }
 }
 
 inline CpuMsgT &CpuMsgT::operator=(CpuMsgT o) FLATBUFFERS_NOEXCEPT {
-  std::swap(infos, o.infos);
+  std::swap(ave, o.ave);
+  std::swap(cores, o.cores);
   return *this;
 }
 
@@ -214,7 +230,8 @@ inline CpuMsgT *CpuMsg::UnPack(const flatbuffers::resolver_function_t *_resolver
 inline void CpuMsg::UnPackTo(CpuMsgT *_o, const flatbuffers::resolver_function_t *_resolver) const {
   (void)_o;
   (void)_resolver;
-  { auto _e = infos(); if (_e) { _o->infos.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { if(_o->infos[_i]) { _e->Get(_i)->UnPackTo(_o->infos[_i].get(), _resolver); } else { _o->infos[_i] = std::unique_ptr<cpu_monitor::msg::CpuInfoT>(_e->Get(_i)->UnPack(_resolver)); }; } } else { _o->infos.resize(0); } }
+  { auto _e = ave(); if (_e) { if(_o->ave) { _e->UnPackTo(_o->ave.get(), _resolver); } else { _o->ave = std::unique_ptr<cpu_monitor::msg::CpuInfoT>(_e->UnPack(_resolver)); } } else if (_o->ave) { _o->ave.reset(); } }
+  { auto _e = cores(); if (_e) { _o->cores.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { if(_o->cores[_i]) { _e->Get(_i)->UnPackTo(_o->cores[_i].get(), _resolver); } else { _o->cores[_i] = std::unique_ptr<cpu_monitor::msg::CpuInfoT>(_e->Get(_i)->UnPack(_resolver)); }; } } else { _o->cores.resize(0); } }
 }
 
 inline flatbuffers::Offset<CpuMsg> CpuMsg::Pack(flatbuffers::FlatBufferBuilder &_fbb, const CpuMsgT* _o, const flatbuffers::rehasher_function_t *_rehasher) {
@@ -225,10 +242,12 @@ inline flatbuffers::Offset<CpuMsg> CreateCpuMsg(flatbuffers::FlatBufferBuilder &
   (void)_rehasher;
   (void)_o;
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const CpuMsgT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
-  auto _infos = _o->infos.size() ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> (_o->infos.size(), [](size_t i, _VectorArgs *__va) { return CreateCpuInfo(*__va->__fbb, __va->__o->infos[i].get(), __va->__rehasher); }, &_va ) : 0;
+  auto _ave = _o->ave ? CreateCpuInfo(_fbb, _o->ave.get(), _rehasher) : 0;
+  auto _cores = _o->cores.size() ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> (_o->cores.size(), [](size_t i, _VectorArgs *__va) { return CreateCpuInfo(*__va->__fbb, __va->__o->cores[i].get(), __va->__rehasher); }, &_va ) : 0;
   return cpu_monitor::msg::CreateCpuMsg(
       _fbb,
-      _infos);
+      _ave,
+      _cores);
 }
 
 inline const cpu_monitor::msg::CpuMsg *GetCpuMsg(const void *buf) {

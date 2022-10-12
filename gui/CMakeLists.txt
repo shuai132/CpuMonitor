@@ -36,6 +36,18 @@ add_library(imgui
         ${IMGUI_DIR}/imgui_widgets.cpp)
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${GL_DIR} ${IMGUI_DIR}/backends)
 link_libraries(imgui)
+target_compile_definitions(imgui PUBLIC
+        -DIMGUI_USER_CONFIG="${CMAKE_CURRENT_LIST_DIR}/imconfig.h"
+        -DIMGUI_DISABLE_INCLUDE_IMCONFIG_H
+        )
+
+# implot
+include_directories(../thirdparty/implot)
+set(SRCS_IMPLOT
+        ../thirdparty/implot/implot.cpp
+        ../thirdparty/implot/implot_demo.cpp
+        ../thirdparty/implot/implot_items.cpp
+        )
 
 # common
 add_subdirectory(../common common)
@@ -57,5 +69,5 @@ include_directories(
 )
 
 file(GLOB_RECURSE SRCS *.cpp)
-add_executable(${PROJECT_NAME} ${BUILD_AS_APP} ${SRCS})
+add_executable(${PROJECT_NAME} ${BUILD_AS_APP} ${SRCS} ${SRCS_IMPLOT})
 target_link_libraries(${PROJECT_NAME} pthread cpu_monitor_common)
