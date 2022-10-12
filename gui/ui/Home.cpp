@@ -150,6 +150,46 @@ void Home::onDraw() const {
     ImPlot::EndPlot();
   }
 
+  // pids
+  if (0) {
+    for (const auto& item : s_msg_pids) {
+      auto& progressInfos = item.second;
+
+      auto plotName = "Progress: " + std::to_string(item.first);
+      ImPlot::BeginPlot(plotName.c_str());
+      int axisFlags = ImPlotAxisFlags_NoLabel;
+      const int axisXMin = 10;
+      ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
+
+      if (s_msg_cpus.size() <= axisXMin) {
+        axisFlags |= ImPlotAxisFlags_Lock;
+      } else {
+        axisFlags |= ImPlotAxisFlags_AutoFit;
+      }
+
+      ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, axisFlags);
+      ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Outside);
+      if (!progressInfos.empty()) {
+        for (int i = 0; i < progressInfos.front().size(); ++i) {
+          static auto& threadInfos = progressInfos[i];
+          if (threadInfos.empty()) {
+            LOGW("no thread info: %d", i);
+            continue;
+          }
+          static auto& threadInfo = threadInfos[i];
+
+          ImPlot::PlotLineG(
+              threadInfo->name.c_str(),
+              (ImPlotGetter)[](int idx, void* user_data) {
+                return ImPlotPoint{(double)idx, threadInfo->infos[idx]->usage};
+              },
+              nullptr, (int)s_msg_cpus.size());
+        }
+      }
+      ImPlot::EndPlot();
+    }
+  }
+
   // plot demo
   if (0) {
     bool open = true;
