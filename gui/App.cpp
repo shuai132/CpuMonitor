@@ -10,7 +10,7 @@ App* App::instance() {
 }
 
 App::App() {
-  context_.post([]{
+  context_.post([] {
     home = std::make_unique<Home>();
   });
 }
