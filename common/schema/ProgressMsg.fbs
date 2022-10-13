@@ -2,10 +2,12 @@ namespace cpu_monitor.msg;
 
 table ThreadInfo {
   name: string;
+  id: uint64;
   usage: float32;
 }
 
 table ProgressInfo {
+  id: uint64;
   name: string;
   infos: [ThreadInfo];
 }

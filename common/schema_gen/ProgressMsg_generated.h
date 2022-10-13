@@ -31,6 +31,7 @@ struct ProgressMsgT;
 struct ThreadInfoT : public flatbuffers::NativeTable {
   typedef ThreadInfo TableType;
   std::string name{};
+  uint64_t id = 0;
   float usage = 0.0f;
 };
 
@@ -39,10 +40,14 @@ struct ThreadInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef ThreadInfoBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
-    VT_USAGE = 6
+    VT_ID = 6,
+    VT_USAGE = 8
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
+  }
+  uint64_t id() const {
+    return GetField<uint64_t>(VT_ID, 0);
   }
   float usage() const {
     return GetField<float>(VT_USAGE, 0.0f);
@@ -51,6 +56,7 @@ struct ThreadInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
+           VerifyField<uint64_t>(verifier, VT_ID, 8) &&
            VerifyField<float>(verifier, VT_USAGE, 4) &&
            verifier.EndTable();
   }
@@ -65,6 +71,9 @@ struct ThreadInfoBuilder {
   flatbuffers::uoffset_t start_;
   void add_name(flatbuffers::Offset<flatbuffers::String> name) {
     fbb_.AddOffset(ThreadInfo::VT_NAME, name);
+  }
+  void add_id(uint64_t id) {
+    fbb_.AddElement<uint64_t>(ThreadInfo::VT_ID, id, 0);
   }
   void add_usage(float usage) {
     fbb_.AddElement<float>(ThreadInfo::VT_USAGE, usage, 0.0f);
@@ -83,8 +92,10 @@ struct ThreadInfoBuilder {
 inline flatbuffers::Offset<ThreadInfo> CreateThreadInfo(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::String> name = 0,
+    uint64_t id = 0,
     float usage = 0.0f) {
   ThreadInfoBuilder builder_(_fbb);
+  builder_.add_id(id);
   builder_.add_usage(usage);
   builder_.add_name(name);
   return builder_.Finish();
@@ -93,11 +104,13 @@ inline flatbuffers::Offset<ThreadInfo> CreateThreadInfo(
 inline flatbuffers::Offset<ThreadInfo> CreateThreadInfoDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
+    uint64_t id = 0,
     float usage = 0.0f) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   return cpu_monitor::msg::CreateThreadInfo(
       _fbb,
       name__,
+      id,
       usage);
 }
 
@@ -105,6 +118,7 @@ flatbuffers::Offset<ThreadInfo> CreateThreadInfo(flatbuffers::FlatBufferBuilder 
 
 struct ProgressInfoT : public flatbuffers::NativeTable {
   typedef ProgressInfo TableType;
+  uint64_t id = 0;
   std::string name{};
   std::vector<std::unique_ptr<cpu_monitor::msg::ThreadInfoT>> infos{};
   ProgressInfoT() = default;
@@ -117,9 +131,13 @@ struct ProgressInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef ProgressInfoT NativeTableType;
   typedef ProgressInfoBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_NAME = 4,
-    VT_INFOS = 6
+    VT_ID = 4,
+    VT_NAME = 6,
+    VT_INFOS = 8
   };
+  uint64_t id() const {
+    return GetField<uint64_t>(VT_ID, 0);
+  }
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
   }
@@ -128,6 +146,7 @@ struct ProgressInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
+           VerifyField<uint64_t>(verifier, VT_ID, 8) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
            VerifyOffset(verifier, VT_INFOS) &&
@@ -144,6 +163,9 @@ struct ProgressInfoBuilder {
   typedef ProgressInfo Table;
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
+  void add_id(uint64_t id) {
+    fbb_.AddElement<uint64_t>(ProgressInfo::VT_ID, id, 0);
+  }
   void add_name(flatbuffers::Offset<flatbuffers::String> name) {
     fbb_.AddOffset(ProgressInfo::VT_NAME, name);
   }
@@ -163,9 +185,11 @@ struct ProgressInfoBuilder {
 
 inline flatbuffers::Offset<ProgressInfo> CreateProgressInfo(
     flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t id = 0,
     flatbuffers::Offset<flatbuffers::String> name = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::ThreadInfo>>> infos = 0) {
   ProgressInfoBuilder builder_(_fbb);
+  builder_.add_id(id);
   builder_.add_infos(infos);
   builder_.add_name(name);
   return builder_.Finish();
@@ -173,12 +197,14 @@ inline flatbuffers::Offset<ProgressInfo> CreateProgressInfo(
 
 inline flatbuffers::Offset<ProgressInfo> CreateProgressInfoDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
+    uint64_t id = 0,
     const char *name = nullptr,
     const std::vector<flatbuffers::Offset<cpu_monitor::msg::ThreadInfo>> *infos = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   auto infos__ = infos ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::ThreadInfo>>(*infos) : 0;
   return cpu_monitor::msg::CreateProgressInfo(
       _fbb,
+      id,
       name__,
       infos__);
 }
@@ -262,6 +288,7 @@ inline void ThreadInfo::UnPackTo(ThreadInfoT *_o, const flatbuffers::resolver_fu
   (void)_o;
   (void)_resolver;
   { auto _e = name(); if (_e) _o->name = _e->str(); }
+  { auto _e = id(); _o->id = _e; }
   { auto _e = usage(); _o->usage = _e; }
 }
 
@@ -274,20 +301,24 @@ inline flatbuffers::Offset<ThreadInfo> CreateThreadInfo(flatbuffers::FlatBufferB
   (void)_o;
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const ThreadInfoT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
   auto _name = _o->name.empty() ? 0 : _fbb.CreateString(_o->name);
+  auto _id = _o->id;
   auto _usage = _o->usage;
   return cpu_monitor::msg::CreateThreadInfo(
       _fbb,
       _name,
+      _id,
       _usage);
 }
 
 inline ProgressInfoT::ProgressInfoT(const ProgressInfoT &o)
-      : name(o.name) {
+      : id(o.id),
+        name(o.name) {
   infos.reserve(o.infos.size());
   for (const auto &infos_ : o.infos) { infos.emplace_back((infos_) ? new cpu_monitor::msg::ThreadInfoT(*infos_) : nullptr); }
 }
 
 inline ProgressInfoT &ProgressInfoT::operator=(ProgressInfoT o) FLATBUFFERS_NOEXCEPT {
+  std::swap(id, o.id);
   std::swap(name, o.name);
   std::swap(infos, o.infos);
   return *this;
@@ -302,6 +333,7 @@ inline ProgressInfoT *ProgressInfo::UnPack(const flatbuffers::resolver_function_
 inline void ProgressInfo::UnPackTo(ProgressInfoT *_o, const flatbuffers::resolver_function_t *_resolver) const {
   (void)_o;
   (void)_resolver;
+  { auto _e = id(); _o->id = _e; }
   { auto _e = name(); if (_e) _o->name = _e->str(); }
   { auto _e = infos(); if (_e) { _o->infos.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { if(_o->infos[_i]) { _e->Get(_i)->UnPackTo(_o->infos[_i].get(), _resolver); } else { _o->infos[_i] = std::unique_ptr<cpu_monitor::msg::ThreadInfoT>(_e->Get(_i)->UnPack(_resolver)); }; } } else { _o->infos.resize(0); } }
 }
@@ -314,10 +346,12 @@ inline flatbuffers::Offset<ProgressInfo> CreateProgressInfo(flatbuffers::FlatBuf
   (void)_rehasher;
   (void)_o;
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const ProgressInfoT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
+  auto _id = _o->id;
   auto _name = _o->name.empty() ? 0 : _fbb.CreateString(_o->name);
   auto _infos = _o->infos.size() ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::ThreadInfo>> (_o->infos.size(), [](size_t i, _VectorArgs *__va) { return CreateThreadInfo(*__va->__fbb, __va->__o->infos[i].get(), __va->__rehasher); }, &_va ) : 0;
   return cpu_monitor::msg::CreateProgressInfo(
       _fbb,
+      _id,
       _name,
       _infos);
 }
