@@ -36,8 +36,6 @@ int main(int, char**) {
   GLFWwindow* window = glfwCreateWindow(ui::MainWindowWidth, ui::MainWindowHeight, ui::MainWindowTitle, nullptr, nullptr);
   if (window == nullptr) return 1;
 
-  glfwSetWindowSizeLimits(window, ui::MainWindowWidth, ui::MainWindowHeight, ui::MainWindowWidth, ui::MainWindowHeight);
-
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);  // Enable vsync
 
@@ -86,20 +84,23 @@ int main(int, char**) {
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
 
-    // Start the Dear ImGui frame
-    ImGui_ImplOpenGL2_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    App::instance()->poll();
-
-    // Rendering
-    ImGui::Render();
     int display_w, display_h;
     glfwGetFramebufferSize(window, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL2_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+
+    ImGui::NewFrame();
+    ImGui::SetNextWindowSize({(float)display_w, (float)display_h});
+
+    App::instance()->poll();
+
+    // Rendering
+    ImGui::Render();
 
     // If you are using this code with non-legacy OpenGL header/contexts (which you should not, prefer using imgui_impl_opengl3.cpp!!),
     // you may need to backup/reset/restore current shader using the commented lines below.

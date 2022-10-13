@@ -92,8 +92,6 @@ void Home::onDraw() const {
   using namespace ImGui;
 
   ImGui::Begin("MainWindow", nullptr, windowFlags_);  // NOLINT
-  ImGui::SetWindowPos({0, 0});
-  ImGui::SetWindowSize({ui::MainWindowWidth, ui::MainWindowHeight});
   PushItemWidth(ui::ITEM_WIDTH);
 
   Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / GetIO().Framerate, GetIO().Framerate);
