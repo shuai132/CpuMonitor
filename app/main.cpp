@@ -73,7 +73,7 @@ static void sendNowCpuInfos() {
       info->usage = item->usage;
       msg.msg.cores.push_back(std::move(info));
     }
-    s_rpc->createRequest()->cmd("on_cpm_msg")->msg(msg)->call();
+    s_rpc->createRequest()->cmd("on_cpu_msg")->msg(msg)->call();
   }
 
   // progress info

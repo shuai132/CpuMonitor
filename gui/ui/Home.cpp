@@ -23,7 +23,7 @@ static std::map<uint32_t, std::vector<decltype(msg::ProgressMsgT::infos)>> s_msg
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
 static void initRpcTask() {
-  s_rpc->subscribe<RpcMsg<msg::CpuMsgT>>("on_cpm_msg", [](RpcMsg<msg::CpuMsgT> msg) {
+  s_rpc->subscribe<RpcMsg<msg::CpuMsgT>>("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
     s_msg_cpus.push_back(std::move(msg.msg));
   });
 
