@@ -110,6 +110,99 @@ void Home::onDraw() const {
   ImGui::SameLine();
   ImGui::Checkbox("Show Cores", &ui::flag::showCpuCores);
 
+  {
+    // NAME
+    {
+      ImGui::SameLine();
+      static std::string name = "cpu_monitor";
+      name.resize(32);
+      ImGui::PushItemWidth(120);
+      ImGui::Text("Name:");
+      ImGui::SameLine();
+      ImGui::InputText("##add_name", (char*)name.data(), name.size());
+      ImGui::PopItemWidth();
+      ImGui::SameLine();
+      if (ImGui::Button("Add##add_name_btn")) {
+        if (name[0] == 0) {
+          LOGW("name empty");
+        } else {
+          LOGD("add name: %s", name.c_str());
+          if (s_rpc) {
+            s_rpc->createRequest()
+                ->cmd("add_name")
+                ->msg(RpcCore::String(name))
+                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                  LOGD("add name rsp: %s", msg.c_str());
+                })
+                ->call();
+          }
+        }
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Del##del_name_btn")) {
+        if (name[0] == 0) {
+          LOGW("name empty");
+        } else {
+          LOGD("del name: %s", name.c_str());
+          if (s_rpc) {
+            s_rpc->createRequest()
+                ->cmd("del_name")
+                ->msg(RpcCore::String(name))
+                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                  LOGD("del name rsp: %s", msg.c_str());
+                })
+                ->call();
+          }
+        }
+      }
+    }
+    // PID
+    {
+      ImGui::SameLine();
+      static std::string pid;
+      pid.resize(60);
+      ImGui::PushItemWidth(80);
+      ImGui::Text("PID:");
+      ImGui::SameLine();
+      ImGui::InputText("##add_pid", (char*)pid.data(), pid.size(), ImGuiInputTextFlags_CharsDecimal);
+      ImGui::PopItemWidth();
+      ImGui::SameLine();
+      if (ImGui::Button("Add##add_pid_btn")) {
+        if (pid[0] == 0) {
+          LOGW("pid empty");
+        } else {
+          LOGD("add pid: %s", pid.c_str());
+          if (s_rpc) {
+            s_rpc->createRequest()
+                ->cmd("add_pid")
+                ->msg(RpcCore::String(pid))
+                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                  LOGD("add pid rsp: %s", msg.c_str());
+                })
+                ->call();
+          }
+        }
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Del##del_pid_btn")) {
+        if (pid[0] == 0) {
+          LOGW("pid empty");
+        } else {
+          LOGD("del pid: %s", pid.c_str());
+          if (s_rpc) {
+            s_rpc->createRequest()
+                ->cmd("del_pid")
+                ->msg(RpcCore::String(pid))
+                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                  LOGD("del pid rsp: %s", msg.c_str());
+                })
+                ->call();
+          }
+        }
+      }
+    }
+  }
+
   // ave
   if (ui::flag::showCpuAve) {
     ImPlot::BeginPlot("Cpu Ave Usages (%/sec)");

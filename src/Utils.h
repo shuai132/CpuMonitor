@@ -11,6 +11,7 @@ namespace Utils {
 
 struct TasksRet {
   bool ok = false;
+  std::string name;
   std::vector<TaskId_t> ids;
 };
 

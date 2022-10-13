@@ -45,13 +45,40 @@ struct ProgressKey {
 using MonitorPids = std::map<ProgressKey, MonitorTasks>;
 static MonitorPids s_monitor_pids;
 
+static bool addMonitorPid(PID_t pid);
+static bool addMonitorPid(const std::string& pid);
+static bool addMonitorPidByName(const std::string& name);
+
 static void initRpcTask() {
-  s_rpc->subscribe("add_pid", [] {
+  using namespace RpcCore;
 
+  s_rpc->subscribe<String, String>("add_pid", [](const String& pid) {
+    LOGD("add_pid: %s", pid.c_str());
+    if (addMonitorPid(pid)) {
+      return "ok";
+    } else {
+      return "false";
+    }
   });
-  s_rpc->subscribe("del_pid", [] {
+  s_rpc->subscribe<String, String>("del_pid", [](const String& pid) {
+    LOGD("del_pid: %s", pid.c_str());
+    return "ok";
+  });
 
+  s_rpc->subscribe<String, String>("add_name", [](const String& name) {
+    LOGD("add_name: %s", name.c_str());
+    if (addMonitorPidByName(name)) {
+      return "ok";
+    } else {
+      return "false";
+    }
+    return "ok";
   });
+  s_rpc->subscribe<String, String>("del_name", [](const String& name) {
+    LOGD("del_name: %s", name.c_str());
+    return "ok";
+  });
+
   s_rpc->subscribe("get_added_pids", [] {
 
   });
@@ -192,8 +219,7 @@ static bool updateProgress() {
   return true;
 }
 
-static bool initMonitor() {
-  auto pid = Utils::getFirstPidByName("cpu_monitor_test_thread");
+static bool addMonitorPid(PID_t pid) {
   auto ret = Utils::getTasksOfPid(pid);
   LOGI("get task info: pid: %u, ok: %d, num: %zu", pid, ret.ok, ret.ids.size());
   if (!ret.ok) {
@@ -202,7 +228,7 @@ static bool initMonitor() {
   }
 
   // add to monitor
-  auto& monitorTask = s_monitor_pids[{pid, "cpu_monitor_test_thread"}];
+  auto& monitorTask = s_monitor_pids[{pid, ret.name}];
 
   // add threads
   for (auto tid : ret.ids) {
@@ -211,6 +237,19 @@ static bool initMonitor() {
   }
 
   return true;
+}
+
+static bool addMonitorPid(const std::string& pid) {
+  PID_t pid_t = strtoul(pid.c_str(), nullptr, 10);
+  if (pid_t == 0) {
+    return false;
+  }
+  return addMonitorPid(pid_t);
+}
+
+static bool addMonitorPidByName(const std::string& name) {
+  auto pid = Utils::getFirstPidByName(name);
+  return addMonitorPid(pid);
 }
 
 static void asyncNextUpdate() {
@@ -234,7 +273,6 @@ static void initApp() {
 
 static void runApp() {
   initApp();
-  initMonitor();
   runServer();
 }
 
