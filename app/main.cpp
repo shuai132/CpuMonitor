@@ -34,15 +34,15 @@ static const auto s_total_time_impl = [] {
 };
 
 using MonitorTasks = std::vector<std::unique_ptr<TaskMonitor>>;
-struct MonitorTasksKey {
-  PID_t id;
+struct ProgressKey {
+  PID_t pid;
   std::string name;
 
-  friend inline bool operator<(const MonitorTasksKey& a, const MonitorTasksKey& b) {
-    return a.id < b.id;
+  friend inline bool operator<(const ProgressKey& a, const ProgressKey& b) {
+    return a.pid < b.pid;
   }
 };
-using MonitorPids = std::map<MonitorTasksKey, MonitorTasks>;
+using MonitorPids = std::map<ProgressKey, MonitorTasks>;
 static MonitorPids s_monitor_pids;
 
 static void initRpcTask() {
@@ -94,12 +94,13 @@ static void sendNowCpuInfos() {
       auto& tasks = monitorPid.second;
 
       auto progressInfo = std::make_unique<msg::ProgressInfoT>();
-      progressInfo->id = id.id;
+      progressInfo->id = id.pid;
       progressInfo->name = id.name;
       for (const auto& task : tasks) {
         auto taskInfo = std::make_unique<msg::ThreadInfoT>();
         taskInfo->id = task->stat().id;
         taskInfo->name = task->stat().name;
+        taskInfo->usage = task->usage;
         progressInfo->infos.push_back(std::move(taskInfo));
       }
       msg.msg.infos.push_back(std::move(progressInfo));
@@ -142,7 +143,7 @@ static void updateCpu() {
 static bool updateProgress() {
   for (auto& monitorPid : s_monitor_pids) {
     auto& id = monitorPid.first;
-    auto pid = id.id;
+    auto pid = id.pid;
     auto& tasks = monitorPid.second;
 
     for (auto& task : tasks) {
@@ -192,7 +193,7 @@ static bool updateProgress() {
 }
 
 static bool initMonitor() {
-  auto pid = Utils::getFirstPidByName("node");
+  auto pid = Utils::getFirstPidByName("cpu_monitor_test_thread");
   auto ret = Utils::getTasksOfPid(pid);
   LOGI("get task info: pid: %u, ok: %d, num: %zu", pid, ret.ok, ret.ids.size());
   if (!ret.ok) {
@@ -201,7 +202,7 @@ static bool initMonitor() {
   }
 
   // add to monitor
-  auto& monitorTask = s_monitor_pids[{pid, "node"}];
+  auto& monitorTask = s_monitor_pids[{pid, "cpu_monitor_test_thread"}];
 
   // add threads
   for (auto tid : ret.ids) {

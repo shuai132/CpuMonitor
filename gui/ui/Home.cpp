@@ -4,6 +4,7 @@
 #include "CpuMsg_generated.h"
 #include "ProgressMsg_generated.h"
 #include "RpcMsg.h"
+#include "Types.h"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
@@ -18,7 +19,19 @@ static std::shared_ptr<RpcCore::Rpc> s_rpc;
 static std::shared_ptr<RpcCore::Dispose> s_dispose;
 
 static std::vector<msg::CpuMsgT> s_msg_cpus;
-static std::map<uint32_t, std::vector<decltype(msg::ProgressMsgT::infos)>> s_msg_pids;
+
+struct ProgressKey {
+  PID_t pid;
+  std::string name;
+
+  friend inline bool operator<(const ProgressKey& a, const ProgressKey& b) {
+    return a.pid < b.pid;
+  }
+};
+
+using ThreadInfosType = std::vector<std::unique_ptr<cpu_monitor::msg::ThreadInfoT>>;
+using ThreadInfoTable = std::map<TaskId_t, ThreadInfosType>;
+static std::map<ProgressKey, ThreadInfoTable> s_msg_pids;
 
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
@@ -28,7 +41,13 @@ static void initRpcTask() {
   });
 
   s_rpc->subscribe<RpcMsg<msg::ProgressMsgT>>("on_progress_msg", [](RpcMsg<msg::ProgressMsgT> msg) {
-    s_msg_pids[1].push_back(std::move(msg.msg.infos));
+    auto& progressMsg = msg.msg;
+    for (auto& pInfo : progressMsg.infos) {
+      auto& progressInfos = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
+      for (auto& item : pInfo->infos) {
+        progressInfos[item->id].push_back(std::move(item));
+      }
+    }
   });
 }
 
@@ -62,6 +81,13 @@ static void startAutoConnect() {
   });
 }
 
+namespace ui {
+namespace flag {
+bool showCpuAve = true;
+bool showCpuCores = true;
+}  // namespace flag
+}  // namespace ui
+
 void Home::onDraw() const {
   using namespace ImGui;
 
@@ -80,8 +106,14 @@ void Home::onDraw() const {
     }
   }
 
+  ImGui::SameLine();
+  ImGui::Checkbox("Show Ave", &ui::flag::showCpuAve);
+
+  ImGui::SameLine();
+  ImGui::Checkbox("Show Cores", &ui::flag::showCpuCores);
+
   // ave
-  {
+  if (ui::flag::showCpuAve) {
     ImPlot::BeginPlot("Cpu Ave Usages (%/sec)");
     int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
@@ -121,7 +153,7 @@ void Home::onDraw() const {
   }
 
   // cores
-  {
+  if (ui::flag::showCpuCores) {
     ImPlot::BeginPlot("Cpu Cores Usages (%/sec)");
     int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
@@ -151,11 +183,12 @@ void Home::onDraw() const {
   }
 
   // pids
-  if (0) {
-    for (const auto& item : s_msg_pids) {
-      auto& progressInfos = item.second;
+  {
+    for (const auto& msgPid : s_msg_pids) {
+      auto& progressKey = msgPid.first;
+      auto& threadInfoTable = msgPid.second;
 
-      auto plotName = "Progress: " + std::to_string(item.first);
+      auto plotName = "pid: " + std::to_string(progressKey.pid) + ": " + progressKey.name;
       ImPlot::BeginPlot(plotName.c_str());
       int axisFlags = ImPlotAxisFlags_NoLabel;
       const int axisXMin = 10;
@@ -167,23 +200,26 @@ void Home::onDraw() const {
         axisFlags |= ImPlotAxisFlags_AutoFit;
       }
 
-      ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, axisFlags);
-      ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Outside);
-      if (!progressInfos.empty()) {
-        for (int i = 0; i < progressInfos.front().size(); ++i) {
-          static auto& threadInfos = progressInfos[i];
-          if (threadInfos.empty()) {
-            LOGW("no thread info: %d", i);
-            continue;
-          }
-          static auto& threadInfo = threadInfos[i];
+      ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_Lock);
+      ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
+      if (!threadInfoTable.empty()) {
+        for (auto& item : threadInfoTable) {
+          const static ThreadInfosType* threadInfos;
+          threadInfos = &(item.second);
 
-          ImPlot::PlotLineG(
-              threadInfo->name.c_str(),
-              (ImPlotGetter)[](int idx, void* user_data) {
-                return ImPlotPoint{(double)idx, threadInfo->infos[idx]->usage};
-              },
-              nullptr, (int)s_msg_cpus.size());
+          {
+            static int indexNow;
+            indexNow = 0;
+
+            auto& threadInfo = threadInfos[indexNow];
+            auto labelName = std::string("tid: ") + std::to_string(threadInfo.front()->id) + " name: " + threadInfo.front()->name;
+            ImPlot::PlotLineG(
+                labelName.c_str(),
+                (ImPlotGetter)[](int idx, void* user_data) {
+                  return ImPlotPoint{(double)idx, (*threadInfos)[indexNow]->usage * 100};
+                },
+                nullptr, (int)threadInfos->size());
+          }
         }
       }
       ImPlot::EndPlot();
