@@ -226,7 +226,7 @@ void Home::onDraw() const {
 
   // plot demo
   if (0) {
-    bool open = true;
+    static bool open = true;
     ImPlot::ShowDemoWindow(&open);
   }
   ImGui::End();
