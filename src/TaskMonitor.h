@@ -5,6 +5,7 @@
 
 #include "CpuMonitor.h"
 #include "TaskStat.h"
+#include "Types.h"
 #include "detail/noncopyable.hpp"
 
 namespace cpu_monitor {
@@ -17,6 +18,8 @@ class TaskMonitor : noncopyable {
 
  public:
   explicit TaskMonitor(std::string path, TotalTimeImpl totalTimeImpl);
+  explicit TaskMonitor(PID_t pid, TaskId_t tid, TotalTimeImpl totalTimeImpl);
+  explicit TaskMonitor(PID_t pid, TotalTimeImpl totalTimeImpl);
 
   bool update();
 

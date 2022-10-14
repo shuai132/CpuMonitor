@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 
+#include "TaskMonitor.h"
 #include "detail/defer.h"
 
 namespace cpu_monitor {
@@ -22,6 +23,8 @@ TasksRet getTasksOfPid(PID_t pid) {
   }
 
   ret.ok = true;
+  ret.name = TaskMonitor(pid, nullptr).stat().name;
+
   while (true) {
     auto p = readdir(dir);
     if (p == nullptr) break;

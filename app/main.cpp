@@ -25,7 +25,7 @@ static std::unique_ptr<asio::steady_timer> s_timer_update;
 // rpc
 static std::unique_ptr<asio_net::rpc_server> s_rpc_server;
 static std::shared_ptr<RpcCore::Rpc> s_rpc;
-static std::shared_ptr<RpcCore::Dispose> s_dispose;
+static std::unique_ptr<RpcCore::Dispose> s_dispose;
 
 // cpu monitor
 static std::unique_ptr<CpuMonitorAll> s_monitor_cpu;
@@ -57,12 +57,20 @@ static void initRpcTask() {
     if (addMonitorPid(pid)) {
       return "ok";
     } else {
-      return "false";
+      return "no such pid";
     }
   });
   s_rpc->subscribe<String, String>("del_pid", [](const String& pid) {
     LOGD("del_pid: %s", pid.c_str());
-    return "ok";
+    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
+      return std::to_string(item.first.pid) == pid;
+    });
+    if (iter != s_monitor_pids.cend()) {
+      s_monitor_pids.erase(iter);
+      return "ok";
+    } else {
+      return "no such pid";
+    }
   });
 
   s_rpc->subscribe<String, String>("add_name", [](const String& name) {
@@ -70,17 +78,32 @@ static void initRpcTask() {
     if (addMonitorPidByName(name)) {
       return "ok";
     } else {
-      return "false";
+      return "no such name";
     }
-    return "ok";
   });
   s_rpc->subscribe<String, String>("del_name", [](const String& name) {
     LOGD("del_name: %s", name.c_str());
-    return "ok";
+    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
+      return item.first.name == name;
+    });
+    if (iter != s_monitor_pids.cend()) {
+      s_monitor_pids.erase(iter);
+      return "ok";
+    } else {
+      return "no such pid";
+    }
   });
 
-  s_rpc->subscribe("get_added_pids", [] {
-
+  s_rpc->subscribe<Void, RpcMsg<msg::ProgressMsgT>>("get_added_pids", [](auto) {
+    RpcMsg<msg::ProgressMsgT> msg;
+    for (const auto& monitorPid : s_monitor_pids) {
+      auto& id = monitorPid.first;
+      auto progressInfo = std::make_unique<msg::ProgressInfoT>();
+      progressInfo->id = id.pid;
+      progressInfo->name = id.name;
+      msg->infos.push_back(std::move(progressInfo));
+    }
+    return msg;
   });
   s_rpc->subscribe("monitor_all", [] {
 
@@ -154,7 +177,6 @@ static void runServer() {
     };
 
     s_rpc = session->rpc;
-    s_dispose = std::make_shared<RpcCore::Dispose>();
     initRpcTask();
   };
 
@@ -211,7 +233,7 @@ static bool updateProgress() {
     };
     for (const auto& tid : tasksNow) {
       if (isNewTask(tid)) {
-        tasks.push_back(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, tid), s_total_time_impl));
+        tasks.push_back(std::make_unique<TaskMonitor>(pid, tid, s_total_time_impl));
       }
     }
   }
@@ -233,7 +255,7 @@ static bool addMonitorPid(PID_t pid) {
   // add threads
   for (auto tid : ret.ids) {
     LOGI("thread id: %d", tid);
-    monitorTask.push_back(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, tid), s_total_time_impl));
+    monitorTask.push_back(std::make_unique<TaskMonitor>(pid, tid, s_total_time_impl));
   }
 
   return true;
@@ -263,6 +285,8 @@ static void asyncNextUpdate() {
 }
 
 static void initApp() {
+  s_dispose = std::make_unique<RpcCore::Dispose>();
+
   s_monitor_cpu = std::make_unique<CpuMonitorAll>();
 
   s_context = std::make_unique<asio::io_context>();

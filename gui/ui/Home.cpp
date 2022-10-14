@@ -105,6 +105,20 @@ void Home::onDraw() const {
   }
 
   ImGui::SameLine();
+  if (Button("GetPids")) {
+    if (s_rpc) {
+      s_rpc->createRequest()
+          ->cmd("get_added_pids")
+          ->rsp<RpcMsg<msg::ProgressMsgT>>([](RpcMsg<msg::ProgressMsgT> msg) {
+            for (const auto& item : msg->infos) {
+              LOGD("pid: %llu, name: %s", item->id, item->name.c_str());
+            }
+          })
+          ->call();
+    }
+  }
+
+  ImGui::SameLine();
   ImGui::Checkbox("Show Ave", &ui::flag::showCpuAve);
 
   ImGui::SameLine();

@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "Utils.h"
+
 #define READ_PROP(name) file >> stat.name
 #define DUMP_PROP(name) #name ": " << stat.name << "\n"
 
@@ -11,8 +13,14 @@ namespace cpu_monitor {
 TaskMonitor::TaskMonitor(std::string path, TotalTimeImpl totalTimeImpl) {
   statPath_ = std::move(path);
   totalTimeImpl_ = std::move(totalTimeImpl);
-  update();
+  updateFromStat();
 }
+
+TaskMonitor::TaskMonitor(PID_t pid, TaskMonitor::TotalTimeImpl totalTimeImpl)
+    : TaskMonitor(Utils::makeTaskStatPath(pid, pid), std::move(totalTimeImpl)) {}
+
+TaskMonitor::TaskMonitor(PID_t pid, TaskId_t tid, TaskMonitor::TotalTimeImpl totalTimeImpl)
+    : TaskMonitor(Utils::makeTaskStatPath(pid, tid), std::move(totalTimeImpl)) {}
 
 bool TaskMonitor::update() {
   invertAB();

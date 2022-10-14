@@ -45,7 +45,7 @@ static void monitorPid(PID_t pid) {
 
     for (auto tid : ret.ids) {
       LOGI("thread id: %d", tid);
-      tasks.insert(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, tid), totalTimeImpl));
+      tasks.insert(std::make_unique<TaskMonitor>(pid, tid, totalTimeImpl));
     }
   }
 
@@ -92,7 +92,7 @@ static void monitorPid(PID_t pid) {
     };
     for (const auto& item : tasksNow) {
       if (isNewTask(item)) {
-        tasks.insert(std::make_unique<TaskMonitor>(Utils::makeTaskStatPath(pid, item), totalTimeImpl));
+        tasks.insert(std::make_unique<TaskMonitor>(pid, item, totalTimeImpl));
       }
     }
   }
