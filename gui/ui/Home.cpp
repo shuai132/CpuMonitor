@@ -307,7 +307,7 @@ void Home::onDraw() const {
             ImPlot::PlotLineG(
                 labelName.c_str(),
                 (ImPlotGetter)[](int idx, void* user_data) {
-                  return ImPlotPoint{(double)idx, (*threadInfos)[indexNow]->usage * 100};
+                  return ImPlotPoint{(double)idx, (*threadInfos)[indexNow]->usage};
                 },
                 nullptr, (int)threadInfos->size());
           }

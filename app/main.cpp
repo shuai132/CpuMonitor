@@ -176,9 +176,9 @@ static bool updateProgress() {
     for (auto& task : tasks) {
       bool ok = task->update();
       if (ok) {
-        printf("name: %s, id: %lu, usage: %.2f%%\n", task->stat().name.c_str(), task->stat().id, task->usage * 100);
+        printf("name: %s, id: %" PRIu64 ", usage: %.2f%%\n", task->stat().name.c_str(), task->stat().id, task->usage);
       } else {
-        printf("thread exit: name: %s, id: %lu\n", task->stat().name.c_str(), task->stat().id);
+        printf("thread exit: name: %s, id: %" PRIu64 "\n", task->stat().name.c_str(), task->stat().id);
       }
     }
     printf("\n");

@@ -39,7 +39,7 @@ void TaskMonitor::dump() {
             << DUMP_PROP(rss)
             << DUMP_PROP(task_cpu)
             << DUMP_PROP(task_policy)
-            << "usage: " << usage * 100 << "%" << std::endl;
+            << "usage: " << usage << "%" << std::endl;
   // clang-format on
 }
 

@@ -57,9 +57,9 @@ static void monitorPid(PID_t pid) {
     for (auto& item : tasks) {
       bool ok = item->update();
       if (ok) {
-        printf("name: %s, id: %lu, usage: %.2f%%\n", item->stat().name.c_str(), item->stat().id, item->usage * 100);
+        printf("name: %s, id: %" PRIu64 ", usage: %.2f%%\n", item->stat().name.c_str(), item->stat().id, item->usage);
       } else {
-        printf("thread exit: name: %s, id: %lu\n", item->stat().name.c_str(), item->stat().id);
+        printf("thread exit: name: %s, id: %" PRIu64 "\n", item->stat().name.c_str(), item->stat().id);
       }
     }
     printf("\n");
