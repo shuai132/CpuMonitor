@@ -144,7 +144,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->createRequest()
                 ->cmd("add_name")
-                ->msg(RpcCore::String(name))
+                ->msg(RpcCore::String(name.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("add name rsp: %s", msg.c_str());
                 })
@@ -161,7 +161,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->createRequest()
                 ->cmd("del_name")
-                ->msg(RpcCore::String(name))
+                ->msg(RpcCore::String(name.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("del name rsp: %s", msg.c_str());
                 })
@@ -189,7 +189,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->createRequest()
                 ->cmd("add_pid")
-                ->msg(RpcCore::String(pid))
+                ->msg(RpcCore::String(pid.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("add pid rsp: %s", msg.c_str());
                 })
@@ -206,7 +206,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->createRequest()
                 ->cmd("del_pid")
-                ->msg(RpcCore::String(pid))
+                ->msg(RpcCore::String(pid.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("del pid rsp: %s", msg.c_str());
                 })

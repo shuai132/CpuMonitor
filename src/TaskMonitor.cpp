@@ -116,6 +116,12 @@ bool TaskMonitor::updateFromStat() {
   READ_PROP(task_rt_priority);
   READ_PROP(task_policy);
 
+  {
+    // linux thread name like: (cpu_monitor)
+    // remove the `()`
+    auto &name = stat.name;
+    name = name.substr(1, name.size() - 2);
+  }
   return true;
 }
 

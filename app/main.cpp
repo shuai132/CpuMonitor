@@ -54,6 +54,14 @@ static void initRpcTask() {
 
   s_rpc->subscribe<String, String>("add_pid", [](const String& pid) {
     LOGD("add_pid: %s", pid.c_str());
+
+    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
+      return std::to_string(p.first.pid) == pid;
+    });
+    if (iter != s_monitor_pids.cend()) {
+      return "already added";
+    }
+
     if (addMonitorPid(pid)) {
       return "ok";
     } else {
@@ -75,6 +83,13 @@ static void initRpcTask() {
 
   s_rpc->subscribe<String, String>("add_name", [](const String& name) {
     LOGD("add_name: %s", name.c_str());
+    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
+      return p.first.name == name;
+    });
+    if (iter != s_monitor_pids.cend()) {
+      return "already added";
+    }
+
     if (addMonitorPidByName(name)) {
       return "ok";
     } else {
