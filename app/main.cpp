@@ -101,14 +101,14 @@ static void sendNowCpuInfos() {
       auto info = std::make_unique<msg::CpuInfoT>();
       info->name = s_monitor_cpu->ave->stat().name;
       info->usage = s_monitor_cpu->ave->usage;
-      msg.msg.ave = std::move(info);
+      msg->ave = std::move(info);
     }
     // cores
     for (const auto& core : s_monitor_cpu->cores) {
       auto info = std::make_unique<msg::CpuInfoT>();
       info->name = core->stat().name;
       info->usage = core->usage;
-      msg.msg.cores.push_back(std::move(info));
+      msg->cores.push_back(std::move(info));
     }
     s_rpc->createRequest()->cmd("on_cpu_msg")->msg(msg)->call();
   }
@@ -130,7 +130,7 @@ static void sendNowCpuInfos() {
         taskInfo->usage = task->usage;
         progressInfo->infos.push_back(std::move(taskInfo));
       }
-      msg.msg.infos.push_back(std::move(progressInfo));
+      msg->infos.push_back(std::move(progressInfo));
     }
     s_rpc->createRequest()->cmd("on_progress_msg")->msg(msg)->call();
   }

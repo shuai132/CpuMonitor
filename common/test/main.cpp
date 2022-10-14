@@ -1,25 +1,27 @@
 #include "CpuMsg_generated.h"
 #include "RpcMsg.h"
+#include "assert_def.h"
 
 using namespace cpu_monitor;
 
 int main() {
   std::string payload;
   {
-    RpcMsg<msg::CpuMsgT> cpuMsg;
+    RpcMsg<msg::CpuMsgT> msg;
     for (int i = 0; i < 3; ++i) {
       auto cpuInfo = std::make_unique<msg::CpuInfoT>();
       cpuInfo->name = "cpu" + std::to_string(i);
       cpuInfo->usage = 1.f + (float)i;
-      cpuMsg.msg.infos.push_back(std::move(cpuInfo));
+      msg->cores.push_back(std::move(cpuInfo));
     }
 
-    payload = cpuMsg.serialize();
+    payload = msg.serialize();
   }
   {
-    RpcMsg<msg::CpuMsgT> cpuMsg;
-    cpuMsg.deSerialize(payload);
-    for (const auto& item : cpuMsg.msg.infos) {
+    RpcMsg<msg::CpuMsgT> msg;
+    bool ok = msg.deSerialize(payload);
+    ASSERT(ok);
+    for (const auto& item : msg->cores) {
       printf("name: %s, usage: %.2f\n", item->name.c_str(), item->usage);
     }
   }
