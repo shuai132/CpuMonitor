@@ -148,7 +148,7 @@ static void sendNowCpuInfos() {
       info->usage = core->usage;
       msg->cores.push_back(std::move(info));
     }
-    s_rpc->createRequest()->cmd("on_cpu_msg")->msg(msg)->call();
+    s_rpc->cmd("on_cpu_msg")->msg(msg)->call();
   }
 
   // progress info
@@ -170,7 +170,7 @@ static void sendNowCpuInfos() {
       }
       msg->infos.push_back(std::move(progressInfo));
     }
-    s_rpc->createRequest()->cmd("on_progress_msg")->msg(msg)->call();
+    s_rpc->cmd("on_progress_msg")->msg(msg)->call();
   }
 }
 

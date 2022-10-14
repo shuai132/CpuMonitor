@@ -15,7 +15,6 @@ class CpuMonitor : noncopyable {
 
  public:
   CpuStat &stat();
-  ;
 
  public:
   float usage{};

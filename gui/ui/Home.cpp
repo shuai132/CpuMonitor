@@ -89,14 +89,13 @@ bool showCpuCores = true;
 }  // namespace ui
 
 void Home::onDraw() const {
-  using namespace ImGui;
-
   ImGui::Begin("MainWindow", nullptr, windowFlags_);  // NOLINT
-  PushItemWidth(ui::ITEM_WIDTH);
+  ImGui::SetWindowPos({0, 0});
+  ImGui::PushItemWidth(ui::ITEM_WIDTH);
 
-  Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / GetIO().Framerate, GetIO().Framerate);
+  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-  if (Button("connect")) {
+  if (ImGui::Button("connect")) {
     if (s_rpc) {
       LOGI("已连接");
     } else {
@@ -105,10 +104,9 @@ void Home::onDraw() const {
   }
 
   ImGui::SameLine();
-  if (Button("GetPids")) {
+  if (ImGui::Button("GetPids")) {
     if (s_rpc) {
-      s_rpc->createRequest()
-          ->cmd("get_added_pids")
+      s_rpc->cmd("get_added_pids")
           ->rsp<RpcMsg<msg::ProgressMsgT>>([](RpcMsg<msg::ProgressMsgT> msg) {
             for (const auto& item : msg->infos) {
               LOGD("pid: %llu, name: %s", item->id, item->name.c_str());
@@ -142,8 +140,7 @@ void Home::onDraw() const {
         } else {
           LOGD("add name: %s", name.c_str());
           if (s_rpc) {
-            s_rpc->createRequest()
-                ->cmd("add_name")
+            s_rpc->cmd("add_name")
                 ->msg(RpcCore::String(name.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("add name rsp: %s", msg.c_str());
@@ -159,8 +156,7 @@ void Home::onDraw() const {
         } else {
           LOGD("del name: %s", name.c_str());
           if (s_rpc) {
-            s_rpc->createRequest()
-                ->cmd("del_name")
+            s_rpc->cmd("del_name")
                 ->msg(RpcCore::String(name.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("del name rsp: %s", msg.c_str());
@@ -187,8 +183,7 @@ void Home::onDraw() const {
         } else {
           LOGD("add pid: %s", pid.c_str());
           if (s_rpc) {
-            s_rpc->createRequest()
-                ->cmd("add_pid")
+            s_rpc->cmd("add_pid")
                 ->msg(RpcCore::String(pid.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("add pid rsp: %s", msg.c_str());
@@ -204,8 +199,7 @@ void Home::onDraw() const {
         } else {
           LOGD("del pid: %s", pid.c_str());
           if (s_rpc) {
-            s_rpc->createRequest()
-                ->cmd("del_pid")
+            s_rpc->cmd("del_pid")
                 ->msg(RpcCore::String(pid.c_str()))  // NOLINT
                 ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
                   LOGD("del pid rsp: %s", msg.c_str());
