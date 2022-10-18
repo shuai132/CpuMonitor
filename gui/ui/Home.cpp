@@ -1,6 +1,7 @@
 #include "Home.h"
 
 #include "App.h"
+#include "Common.h"
 #include "CpuMsg_generated.h"
 #include "ProgressMsg_generated.h"
 #include "RpcMsg.h"
@@ -53,7 +54,7 @@ static void initRpcTask() {
 static void startAutoConnect();
 
 static void connectServer() {
-  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context());
+  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
   auto& client = s_rpc_client;
   client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
     LOGI("on_open");
@@ -199,8 +200,7 @@ void Home::onDraw() {
   }
 
   // ave
-  if (ui::flag::showCpuAve) {
-    ImPlot::BeginPlot("Cpu Ave Usages (%/sec)");
+  if (ui::flag::showCpuAve && ImPlot::BeginPlot("Cpu Ave Usages (%/sec)")) {
     int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
@@ -239,8 +239,7 @@ void Home::onDraw() {
   }
 
   // cores
-  if (ui::flag::showCpuCores) {
-    ImPlot::BeginPlot("Cpu Cores Usages (%/sec)");
+  if (ui::flag::showCpuCores && ImPlot::BeginPlot("Cpu Cores Usages (%/sec)")) {
     int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
@@ -275,7 +274,9 @@ void Home::onDraw() {
       auto& threadInfoTable = msgPid.second;
 
       auto plotName = "pid: " + std::to_string(progressKey.pid) + ": " + progressKey.name;
-      ImPlot::BeginPlot(plotName.c_str());
+      if (!ImPlot::BeginPlot(plotName.c_str())) {
+        break;
+      }
       int axisFlags = ImPlotAxisFlags_NoLabel;
       const int axisXMin = 10;
       ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);

@@ -4,6 +4,7 @@
 #include <memory>
 #include <set>
 
+#include "Common.h"
 #include "CpuMonitorAll.h"
 #include "CpuMsg_generated.h"
 #include "ProgressMsg_generated.h"
@@ -180,7 +181,7 @@ static void sendNowCpuInfos() {
 
 static void runServer() {
   using namespace asio_net;
-  s_rpc_server = std::make_unique<rpc_server>(*s_context, 8088, 1024 * 1024 * 1);
+  s_rpc_server = std::make_unique<rpc_server>(*s_context, 8088, MessageMaxByteSize);
   auto& server = s_rpc_server;
   server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
     LOGD("on_session");
