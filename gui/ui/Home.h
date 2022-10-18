@@ -10,11 +10,8 @@ class Home : noncopyable {
   ~Home();
 
  public:
-  void onDraw() const;
+  static void onDraw();
 
  private:
-  void initGUI();
-
- public:
-  uint32_t windowFlags_ = 0;
+  static void initGUI();
 };

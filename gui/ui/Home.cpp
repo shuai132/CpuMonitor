@@ -9,7 +9,6 @@
 #include "implot.h"
 #include "log.h"
 #include "rpc_client.hpp"
-#include "uidef.h"
 
 using namespace cpu_monitor;
 
@@ -88,20 +87,8 @@ bool showCpuCores = true;
 }  // namespace flag
 }  // namespace ui
 
-void Home::onDraw() const {
-  ImGui::Begin("MainWindow", nullptr, windowFlags_);  // NOLINT
-  ImGui::SetWindowPos({0, 0});
-  ImGui::PushItemWidth(ui::ITEM_WIDTH);
-
+void Home::onDraw() {
   ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-  if (ImGui::Button("connect")) {
-    if (s_rpc) {
-      LOGI("已连接");
-    } else {
-      connectServer();
-    }
-  }
 
   ImGui::SameLine();
   if (ImGui::Button("GetPids")) {
@@ -330,15 +317,9 @@ void Home::onDraw() const {
     static bool open = true;
     ImPlot::ShowDemoWindow(&open);
   }
-  ImGui::End();
 }
 
 void Home::initGUI() {
-  windowFlags_ |= ImGuiWindowFlags_NoMove;
-  windowFlags_ |= ImGuiWindowFlags_NoResize;
-  windowFlags_ |= ImGuiWindowFlags_NoCollapse;
-  windowFlags_ |= ImGuiWindowFlags_NoTitleBar;
-
   ImPlot::CreateContext();
 }
 

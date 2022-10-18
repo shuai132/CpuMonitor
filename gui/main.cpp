@@ -12,6 +12,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl2.h"
+#include "log.h"
 #include "ui/uidef.h"
 #ifdef __APPLE__
 #define GL_SILENCE_DEPRECATION
@@ -33,6 +34,7 @@ int main(int, char**) {
   // Setup window
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) return 1;
+
   GLFWwindow* window = glfwCreateWindow(ui::MainWindowWidth, ui::MainWindowHeight, ui::MainWindowTitle, nullptr, nullptr);
   if (window == nullptr) return 1;
 
@@ -95,9 +97,32 @@ int main(int, char**) {
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
-    ImGui::SetNextWindowSize({(float)display_w, (float)display_h});
+
+    static uint32_t windowFlags = [] {
+      uint32_t flags = 0;
+      flags |= ImGuiWindowFlags_NoMove;
+      flags |= ImGuiWindowFlags_NoResize;
+      flags |= ImGuiWindowFlags_NoCollapse;
+      flags |= ImGuiWindowFlags_NoTitleBar;
+      return flags;
+    }();
+
+    ImGui::Begin("MainWindow", nullptr, windowFlags);  // NOLINT
+
+    static bool _windowSizeInit = [&] {
+      auto size = ImGui::GetWindowSize();
+      LOGD("last window size: %.0f, %.0f", size.x, size.y);
+      glfwSetWindowSize(window, (int)size.x, (int)size.y);
+      ImGui::SetWindowPos({0, 0});
+      return false;
+    }();
+    (void)_windowSizeInit;
+
+    ImGui::SetWindowSize({(float)display_w, (float)display_h});
 
     App::instance()->poll();
+
+    ImGui::End();
 
     // Rendering
     ImGui::Render();
