@@ -52,7 +52,7 @@ static bool addMonitorPidByName(const std::string& name);
 static void initRpcTask() {
   using namespace RpcCore;
 
-  s_rpc->subscribe<String, String>("add_pid", [](const String& pid) {
+  s_rpc->subscribe("add_pid", [](const String& pid) -> String {
     LOGD("add_pid: %s", pid.c_str());
 
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
@@ -68,7 +68,8 @@ static void initRpcTask() {
       return "no such pid";
     }
   });
-  s_rpc->subscribe<String, String>("del_pid", [](const String& pid) {
+
+  s_rpc->subscribe("del_pid", [](const String& pid) -> String {
     LOGD("del_pid: %s", pid.c_str());
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
       return std::to_string(item.first.pid) == pid;
@@ -81,7 +82,7 @@ static void initRpcTask() {
     }
   });
 
-  s_rpc->subscribe<String, String>("add_name", [](const String& name) {
+  s_rpc->subscribe("add_name", [](const String& name) -> String {
     LOGD("add_name: %s", name.c_str());
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
       return p.first.name == name;
@@ -96,7 +97,8 @@ static void initRpcTask() {
       return "no such name";
     }
   });
-  s_rpc->subscribe<String, String>("del_name", [](const String& name) {
+
+  s_rpc->subscribe("del_name", [](const String& name) -> String {
     LOGD("del_name: %s", name.c_str());
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
       return item.first.name == name;
@@ -109,7 +111,7 @@ static void initRpcTask() {
     }
   });
 
-  s_rpc->subscribe<Void, RpcMsg<msg::ProgressMsgT>>("get_added_pids", [](auto) {
+  s_rpc->subscribe("get_added_pids", [] {
     RpcMsg<msg::ProgressMsgT> msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
@@ -120,9 +122,11 @@ static void initRpcTask() {
     }
     return msg;
   });
+
   s_rpc->subscribe("monitor_all", [] {
 
   });
+
   s_rpc->subscribe("set_update_interval", [] {
 
   });

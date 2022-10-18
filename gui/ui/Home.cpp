@@ -36,11 +36,11 @@ static std::map<ProgressKey, ThreadInfoTable> s_msg_pids;
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
 static void initRpcTask() {
-  s_rpc->subscribe<RpcMsg<msg::CpuMsgT>>("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
+  s_rpc->subscribe("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
     s_msg_cpus.push_back(std::move(msg.msg));
   });
 
-  s_rpc->subscribe<RpcMsg<msg::ProgressMsgT>>("on_progress_msg", [](RpcMsg<msg::ProgressMsgT> msg) {
+  s_rpc->subscribe("on_progress_msg", [](RpcMsg<msg::ProgressMsgT> msg) {
     auto& progressMsg = msg.msg;
     for (auto& pInfo : progressMsg.infos) {
       auto& progressInfos = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
@@ -107,7 +107,7 @@ void Home::onDraw() const {
   if (ImGui::Button("GetPids")) {
     if (s_rpc) {
       s_rpc->cmd("get_added_pids")
-          ->rsp<RpcMsg<msg::ProgressMsgT>>([](RpcMsg<msg::ProgressMsgT> msg) {
+          ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
             for (const auto& item : msg->infos) {
               LOGD("pid: %llu, name: %s", item->id, item->name.c_str());
             }
@@ -142,7 +142,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->cmd("add_name")
                 ->msg(RpcCore::String(name.c_str()))  // NOLINT
-                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                ->rsp([](const RpcCore::String& msg) {
                   LOGD("add name rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -158,7 +158,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->cmd("del_name")
                 ->msg(RpcCore::String(name.c_str()))  // NOLINT
-                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                ->rsp([](const RpcCore::String& msg) {
                   LOGD("del name rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -185,7 +185,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->cmd("add_pid")
                 ->msg(RpcCore::String(pid.c_str()))  // NOLINT
-                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                ->rsp([](const RpcCore::String& msg) {
                   LOGD("add pid rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -201,7 +201,7 @@ void Home::onDraw() const {
           if (s_rpc) {
             s_rpc->cmd("del_pid")
                 ->msg(RpcCore::String(pid.c_str()))  // NOLINT
-                ->rsp<RpcCore::String>([](const RpcCore::String& msg) {
+                ->rsp([](const RpcCore::String& msg) {
                   LOGD("del pid rsp: %s", msg.c_str());
                 })
                 ->call();
