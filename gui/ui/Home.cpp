@@ -17,7 +17,6 @@ using namespace cpu_monitor;
 // rpc
 static std::unique_ptr<asio_net::rpc_client> s_rpc_client;
 static std::shared_ptr<RpcCore::Rpc> s_rpc;
-static std::shared_ptr<RpcCore::Dispose> s_dispose;
 
 static std::vector<msg::CpuMsgT> s_msg_cpus;
 
@@ -33,6 +32,7 @@ struct ProgressKey {
 using ThreadInfosType = std::vector<std::unique_ptr<cpu_monitor::msg::ThreadInfoT>>;
 using ThreadInfoTable = std::map<TaskId_t, ThreadInfosType>;
 static std::map<ProgressKey, ThreadInfoTable> s_msg_pids;
+static std::map<PID_t, uint> s_pid_current_thread_num;
 
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
@@ -45,6 +45,7 @@ static void initRpcTask() {
     auto& progressMsg = msg.msg;
     for (auto& pInfo : progressMsg.infos) {
       auto& progressInfos = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
+      s_pid_current_thread_num[pInfo->id] = pInfo->infos.size();
       for (auto& item : pInfo->infos) {
         progressInfos[item->id].push_back(std::move(item));
       }
@@ -240,7 +241,11 @@ void Home::onDraw() {
   }
 
   // cores
-  if (ui::flag::showCpuCores && ImPlot::BeginPlot("Cpu Cores Usages (%/sec)")) {
+  std::string coreInfo = []() -> std::string {
+    if (s_msg_cpus.empty()) return "";
+    return " cores: " + std::to_string(s_msg_cpus.front().cores.size());
+  }();
+  if (ui::flag::showCpuCores && ImPlot::BeginPlot(("Cpu Cores Usages (%/sec)" + coreInfo).c_str())) {
     int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
@@ -274,7 +279,8 @@ void Home::onDraw() {
       auto& progressKey = msgPid.first;
       auto& threadInfoTable = msgPid.second;
 
-      auto plotName = "pid: " + std::to_string(progressKey.pid) + ": " + progressKey.name;
+      auto plotName = "pid: " + std::to_string(progressKey.pid) + " name: " + progressKey.name +
+                      " threads: " + std::to_string(s_pid_current_thread_num[progressKey.pid]);
       if (!ImPlot::BeginPlot(plotName.c_str())) {
         break;
       }
@@ -313,10 +319,10 @@ void Home::onDraw() {
   }
 
   // plot demo
-  if (0) {
+#if 0
     static bool open = true;
     ImPlot::ShowDemoWindow(&open);
-  }
+#endif
 }
 
 void Home::initGUI() {
