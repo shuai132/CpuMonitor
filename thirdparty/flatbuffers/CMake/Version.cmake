@@ -31,7 +31,7 @@ if(GIT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
     message(WARNING "git describe failed with exit code: ${GIT_DESCRIBE_RESULT}")
   endif()
 else()
-  message(WARNING "git is not found")
+  message(STATUS "git is not found")
 endif()
 
 message(STATUS "Proceeding with version: ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.${VERSION_COMMIT}")
