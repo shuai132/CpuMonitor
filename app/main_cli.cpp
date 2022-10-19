@@ -30,7 +30,7 @@ static void monitorCpu() {
 static void monitorPid(PID_t pid) {
   CpuMonitorAll cpu;
   const auto totalTimeImpl = [&cpu] {
-    return cpu.ave->totalTime;
+    return cpu.ave->totalTime / cpu.cores.size();
   };
   std::set<std::unique_ptr<TaskMonitor>> tasks;
 

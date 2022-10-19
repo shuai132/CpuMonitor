@@ -31,7 +31,7 @@ static std::unique_ptr<RpcCore::Dispose> s_dispose;
 // cpu monitor
 static std::unique_ptr<CpuMonitorAll> s_monitor_cpu;
 static const auto s_total_time_impl = [] {
-  return s_monitor_cpu->ave->totalTime;
+  return s_monitor_cpu->ave->totalTime / s_monitor_cpu->cores.size();
 };
 
 using MonitorTasks = std::vector<std::unique_ptr<TaskMonitor>>;

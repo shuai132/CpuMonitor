@@ -6,6 +6,7 @@
 #include "ProgressMsg_generated.h"
 #include "RpcMsg.h"
 #include "Types.h"
+#include "defer.h"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
@@ -287,26 +288,24 @@ void Home::onDraw() {
         axisFlags |= ImPlotAxisFlags_AutoFit;
       }
 
-      ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_Lock);
+      ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
       ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
       if (!threadInfoTable.empty()) {
+        int indexNow = 0;
         for (auto& item : threadInfoTable) {
+          defer {
+            ++indexNow;
+          };
           const static ThreadInfosType* threadInfos;
           threadInfos = &(item.second);
 
-          {
-            static int indexNow;
-            indexNow = 0;
-
-            auto& threadInfo = threadInfos[indexNow];
-            auto labelName = std::string("tid: ") + std::to_string(threadInfo.front()->id) + " name: " + threadInfo.front()->name;
-            ImPlot::PlotLineG(
-                labelName.c_str(),
-                (ImPlotGetter)[](int idx, void* user_data) {
-                  return ImPlotPoint{(double)idx, (*threadInfos)[indexNow]->usage};
-                },
-                nullptr, (int)threadInfos->size());
-          }
+          auto labelName = std::string("tid: ") + std::to_string(threadInfos->front()->id) + " name: " + threadInfos->front()->name;
+          ImPlot::PlotLineG(
+              labelName.c_str(),
+              (ImPlotGetter)[](int idx, void* user_data) {
+                return ImPlotPoint{(double)idx, (*threadInfos)[idx]->usage};
+              },
+              nullptr, (int)threadInfos->size());
         }
       }
       ImPlot::EndPlot();

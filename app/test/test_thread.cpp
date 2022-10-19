@@ -2,8 +2,8 @@
 
 int main() {
   std::thread([] {
+    pthread_setname_np(pthread_self(), "cpu_test_1");
     for (;;) {
-      pthread_setname_np(pthread_self(), "cpu_test_1");
       std::this_thread::sleep_for(std::chrono::microseconds(1));
     };
   }).detach();
