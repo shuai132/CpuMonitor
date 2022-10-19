@@ -14,6 +14,7 @@
 #include "asio.hpp"
 #include "log.h"
 #include "rpc_server.hpp"
+#include "string_utils.h"
 
 using namespace cpu_monitor;
 
@@ -26,7 +27,6 @@ static std::unique_ptr<asio::steady_timer> s_timer_update;
 // rpc
 static std::unique_ptr<asio_net::rpc_server> s_rpc_server;
 static std::shared_ptr<RpcCore::Rpc> s_rpc;
-static std::unique_ptr<RpcCore::Dispose> s_dispose;
 
 // cpu monitor
 static std::unique_ptr<CpuMonitorAll> s_monitor_cpu;
@@ -304,9 +304,20 @@ static void asyncNextUpdate() {
   });
 }
 
-static void initApp() {
-  s_dispose = std::make_unique<RpcCore::Dispose>();
+[[noreturn]] static void monitorCpu() {
+  CpuMonitorAll cpu;
+  for (;;) {
+    sleep(1);
+    cpu.update();
+    printf("%s usage: %.2f%%\n", cpu.ave->stat().name, cpu.ave->usage);
+    for (auto& item : cpu.cores) {
+      printf("%s usage: %.2f%%\n", item->stat().name, item->usage);
+    }
+    printf("\n");
+  }
+}
 
+static void initApp() {
   s_monitor_cpu = std::make_unique<CpuMonitorAll>();
 
   s_context = std::make_unique<asio::io_context>();
@@ -316,29 +327,57 @@ static void initApp() {
 }
 
 static void runApp() {
-  initApp();
-  runServer();
+  s_context->run();
 }
 
 static void showHelp() {
   printf(R"(Usage:
--p : 指定端口号 默认8088
+-s : 以服务方式启动（配合GUI） 并指定端口号
+-c : 监控所有CPU核
+-p : 指定监控的PID 半角逗号分隔
+-n : 指定监控进程名 半角逗号分隔
 )");
 }
-
 int main(int argc, char** argv) {
+  if (argc < 2) {
+    showHelp();
+    return 0;
+  }
+
   int ret;
-  while ((ret = getopt(argc, argv, "p:")) != -1) {
-    switch (ret) {  // NOLINT
+  while ((ret = getopt(argc, argv, "s:c::p:n:")) != -1) {
+    switch (ret) {
+      case 's': {
+        s_server_port = std::stoul(optarg, nullptr, 10);
+        LOGD("s_server_port: %u", s_server_port);
+        initApp();
+        runServer();
+      } break;
+      case 'c':
+        monitorCpu();
       case 'p': {
-        s_server_port = std::stoi(optarg, nullptr, 10);
-        LOGD("s_server_port: %d", s_server_port);
+        auto& allPids = optarg;
+        for (const auto& pidStr : string_utils::Split(allPids, ",", true)) {
+          auto pid = std::stoul(pidStr, nullptr, 10);
+          LOGD("add pid: %lu", pid);
+          addMonitorPid(pid);
+        }
+        initApp();
+        runApp();
+      } break;
+      case 'n': {
+        auto& allNames = optarg;
+        for (const auto& name : string_utils::Split(allNames, ",", true)) {
+          LOGD("add name: %s", name.c_str());
+          addMonitorPidByName(name);
+        }
+        initApp();
+        runApp();
       } break;
       default:
         showHelp();
         break;
     }
   }
-  runApp();
   return 0;
 }

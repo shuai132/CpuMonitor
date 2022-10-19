@@ -26,5 +26,4 @@ include_directories(../thirdparty/asio/include)
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} cpu_monitor_common)
 
-add_executable(${PROJECT_NAME}_cli main_cli.cpp)
 add_executable(${PROJECT_NAME}_test_thread test/test_thread.cpp)
