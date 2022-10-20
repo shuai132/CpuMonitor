@@ -1,4 +1,6 @@
-#include "thread"
+#include <thread>
+
+#include "TimeTracker.hpp"
 
 int main() {
   std::thread([] {
@@ -24,14 +26,19 @@ int main() {
 
   // 模拟动态得新增和删除线程
   for (;;) {
+    const int switchThreadSec = 5;
     std::thread([] {
       pthread_setname_np(pthread_self(), "cpu_test_x");
-      std::this_thread::sleep_for(std::chrono::seconds(3));
+
+      TimeTracker tracker;
+      while (tracker.sec() < switchThreadSec) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+      }
     }).join();
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(switchThreadSec));
   }
 
-  getchar();
+  // getchar();
 
   return 0;
 }

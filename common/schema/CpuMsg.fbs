@@ -3,11 +3,13 @@ namespace cpu_monitor.msg;
 table CpuInfo {
   name: string;
   usage: float32;
+  timestamps: uint64;
 }
 
 table CpuMsg {
   ave: CpuInfo;
   cores: [CpuInfo];
+  timestamps: uint64;
 }
 
 root_type CpuMsg;

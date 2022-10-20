@@ -33,6 +33,7 @@ struct ThreadInfoT : public flatbuffers::NativeTable {
   std::string name{};
   uint64_t id = 0;
   float usage = 0.0f;
+  uint64_t timestamps = 0;
 };
 
 struct ThreadInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
@@ -41,7 +42,8 @@ struct ThreadInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
     VT_ID = 6,
-    VT_USAGE = 8
+    VT_USAGE = 8,
+    VT_TIMESTAMPS = 10
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
@@ -52,12 +54,16 @@ struct ThreadInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   float usage() const {
     return GetField<float>(VT_USAGE, 0.0f);
   }
+  uint64_t timestamps() const {
+    return GetField<uint64_t>(VT_TIMESTAMPS, 0);
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
            VerifyField<uint64_t>(verifier, VT_ID, 8) &&
            VerifyField<float>(verifier, VT_USAGE, 4) &&
+           VerifyField<uint64_t>(verifier, VT_TIMESTAMPS, 8) &&
            verifier.EndTable();
   }
   ThreadInfoT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -78,6 +84,9 @@ struct ThreadInfoBuilder {
   void add_usage(float usage) {
     fbb_.AddElement<float>(ThreadInfo::VT_USAGE, usage, 0.0f);
   }
+  void add_timestamps(uint64_t timestamps) {
+    fbb_.AddElement<uint64_t>(ThreadInfo::VT_TIMESTAMPS, timestamps, 0);
+  }
   explicit ThreadInfoBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -93,8 +102,10 @@ inline flatbuffers::Offset<ThreadInfo> CreateThreadInfo(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::String> name = 0,
     uint64_t id = 0,
-    float usage = 0.0f) {
+    float usage = 0.0f,
+    uint64_t timestamps = 0) {
   ThreadInfoBuilder builder_(_fbb);
+  builder_.add_timestamps(timestamps);
   builder_.add_id(id);
   builder_.add_usage(usage);
   builder_.add_name(name);
@@ -105,13 +116,15 @@ inline flatbuffers::Offset<ThreadInfo> CreateThreadInfoDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
     uint64_t id = 0,
-    float usage = 0.0f) {
+    float usage = 0.0f,
+    uint64_t timestamps = 0) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   return cpu_monitor::msg::CreateThreadInfo(
       _fbb,
       name__,
       id,
-      usage);
+      usage,
+      timestamps);
 }
 
 flatbuffers::Offset<ThreadInfo> CreateThreadInfo(flatbuffers::FlatBufferBuilder &_fbb, const ThreadInfoT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
@@ -214,6 +227,7 @@ flatbuffers::Offset<ProgressInfo> CreateProgressInfo(flatbuffers::FlatBufferBuil
 struct ProgressMsgT : public flatbuffers::NativeTable {
   typedef ProgressMsg TableType;
   std::vector<std::unique_ptr<cpu_monitor::msg::ProgressInfoT>> infos{};
+  uint64_t timestamps = 0;
   ProgressMsgT() = default;
   ProgressMsgT(const ProgressMsgT &o);
   ProgressMsgT(ProgressMsgT&&) FLATBUFFERS_NOEXCEPT = default;
@@ -224,16 +238,21 @@ struct ProgressMsg FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef ProgressMsgT NativeTableType;
   typedef ProgressMsgBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_INFOS = 4
+    VT_INFOS = 4,
+    VT_TIMESTAMPS = 6
   };
   const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>> *infos() const {
     return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>> *>(VT_INFOS);
+  }
+  uint64_t timestamps() const {
+    return GetField<uint64_t>(VT_TIMESTAMPS, 0);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_INFOS) &&
            verifier.VerifyVector(infos()) &&
            verifier.VerifyVectorOfTables(infos()) &&
+           VerifyField<uint64_t>(verifier, VT_TIMESTAMPS, 8) &&
            verifier.EndTable();
   }
   ProgressMsgT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -248,6 +267,9 @@ struct ProgressMsgBuilder {
   void add_infos(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>>> infos) {
     fbb_.AddOffset(ProgressMsg::VT_INFOS, infos);
   }
+  void add_timestamps(uint64_t timestamps) {
+    fbb_.AddElement<uint64_t>(ProgressMsg::VT_TIMESTAMPS, timestamps, 0);
+  }
   explicit ProgressMsgBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -261,19 +283,23 @@ struct ProgressMsgBuilder {
 
 inline flatbuffers::Offset<ProgressMsg> CreateProgressMsg(
     flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>>> infos = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>>> infos = 0,
+    uint64_t timestamps = 0) {
   ProgressMsgBuilder builder_(_fbb);
+  builder_.add_timestamps(timestamps);
   builder_.add_infos(infos);
   return builder_.Finish();
 }
 
 inline flatbuffers::Offset<ProgressMsg> CreateProgressMsgDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>> *infos = nullptr) {
+    const std::vector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>> *infos = nullptr,
+    uint64_t timestamps = 0) {
   auto infos__ = infos ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>>(*infos) : 0;
   return cpu_monitor::msg::CreateProgressMsg(
       _fbb,
-      infos__);
+      infos__,
+      timestamps);
 }
 
 flatbuffers::Offset<ProgressMsg> CreateProgressMsg(flatbuffers::FlatBufferBuilder &_fbb, const ProgressMsgT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
@@ -290,6 +316,7 @@ inline void ThreadInfo::UnPackTo(ThreadInfoT *_o, const flatbuffers::resolver_fu
   { auto _e = name(); if (_e) _o->name = _e->str(); }
   { auto _e = id(); _o->id = _e; }
   { auto _e = usage(); _o->usage = _e; }
+  { auto _e = timestamps(); _o->timestamps = _e; }
 }
 
 inline flatbuffers::Offset<ThreadInfo> ThreadInfo::Pack(flatbuffers::FlatBufferBuilder &_fbb, const ThreadInfoT* _o, const flatbuffers::rehasher_function_t *_rehasher) {
@@ -303,11 +330,13 @@ inline flatbuffers::Offset<ThreadInfo> CreateThreadInfo(flatbuffers::FlatBufferB
   auto _name = _o->name.empty() ? 0 : _fbb.CreateString(_o->name);
   auto _id = _o->id;
   auto _usage = _o->usage;
+  auto _timestamps = _o->timestamps;
   return cpu_monitor::msg::CreateThreadInfo(
       _fbb,
       _name,
       _id,
-      _usage);
+      _usage,
+      _timestamps);
 }
 
 inline ProgressInfoT::ProgressInfoT(const ProgressInfoT &o)
@@ -356,13 +385,15 @@ inline flatbuffers::Offset<ProgressInfo> CreateProgressInfo(flatbuffers::FlatBuf
       _infos);
 }
 
-inline ProgressMsgT::ProgressMsgT(const ProgressMsgT &o) {
+inline ProgressMsgT::ProgressMsgT(const ProgressMsgT &o)
+      : timestamps(o.timestamps) {
   infos.reserve(o.infos.size());
   for (const auto &infos_ : o.infos) { infos.emplace_back((infos_) ? new cpu_monitor::msg::ProgressInfoT(*infos_) : nullptr); }
 }
 
 inline ProgressMsgT &ProgressMsgT::operator=(ProgressMsgT o) FLATBUFFERS_NOEXCEPT {
   std::swap(infos, o.infos);
+  std::swap(timestamps, o.timestamps);
   return *this;
 }
 
@@ -376,6 +407,7 @@ inline void ProgressMsg::UnPackTo(ProgressMsgT *_o, const flatbuffers::resolver_
   (void)_o;
   (void)_resolver;
   { auto _e = infos(); if (_e) { _o->infos.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { if(_o->infos[_i]) { _e->Get(_i)->UnPackTo(_o->infos[_i].get(), _resolver); } else { _o->infos[_i] = std::unique_ptr<cpu_monitor::msg::ProgressInfoT>(_e->Get(_i)->UnPack(_resolver)); }; } } else { _o->infos.resize(0); } }
+  { auto _e = timestamps(); _o->timestamps = _e; }
 }
 
 inline flatbuffers::Offset<ProgressMsg> ProgressMsg::Pack(flatbuffers::FlatBufferBuilder &_fbb, const ProgressMsgT* _o, const flatbuffers::rehasher_function_t *_rehasher) {
@@ -387,9 +419,11 @@ inline flatbuffers::Offset<ProgressMsg> CreateProgressMsg(flatbuffers::FlatBuffe
   (void)_o;
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const ProgressMsgT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
   auto _infos = _o->infos.size() ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::ProgressInfo>> (_o->infos.size(), [](size_t i, _VectorArgs *__va) { return CreateProgressInfo(*__va->__fbb, __va->__o->infos[i].get(), __va->__rehasher); }, &_va ) : 0;
+  auto _timestamps = _o->timestamps;
   return cpu_monitor::msg::CreateProgressMsg(
       _fbb,
-      _infos);
+      _infos,
+      _timestamps);
 }
 
 inline const cpu_monitor::msg::ProgressMsg *GetProgressMsg(const void *buf) {

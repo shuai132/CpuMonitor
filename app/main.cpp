@@ -14,7 +14,8 @@
 #include "asio.hpp"
 #include "log.h"
 #include "rpc_server.hpp"
-#include "string_utils.h"
+#include "utils/string_utils.h"
+#include "utils/time_utils.h"
 
 using namespace cpu_monitor;
 
@@ -135,6 +136,7 @@ static void initRpcTask() {
 
 static void sendNowCpuInfos() {
   if (!s_rpc) return;
+  auto timestampsNow = utils::getTimestamps();
 
   // cpu info
   {
@@ -153,6 +155,7 @@ static void sendNowCpuInfos() {
       info->usage = core->usage;
       msg->cores.push_back(std::move(info));
     }
+    msg->timestamps = timestampsNow;
     s_rpc->cmd("on_cpu_msg")->msg(msg)->call();
   }
 
@@ -175,6 +178,7 @@ static void sendNowCpuInfos() {
       }
       msg->infos.push_back(std::move(progressInfo));
     }
+    msg->timestamps = timestampsNow;
     s_rpc->cmd("on_progress_msg")->msg(msg)->call();
   }
 }
@@ -209,10 +213,8 @@ static void updateCpu() {
   printf("system %s usage: %.2f%%\n", s_monitor_cpu->ave->stat().name, s_monitor_cpu->ave->usage);
 }
 
-static bool updateProgress() {
+static void updateProgress() {
   for (auto& monitorPid : s_monitor_pids) {
-    auto& id = monitorPid.first;
-    auto pid = id.pid;
     auto& tasks = monitorPid.second;
 
     for (auto& task : tasks) {
@@ -224,6 +226,14 @@ static bool updateProgress() {
       }
     }
     printf("\n");
+  }
+}
+
+static bool updateProgressChange() {
+  for (auto& monitorPid : s_monitor_pids) {
+    auto& id = monitorPid.first;
+    auto pid = id.pid;
+    auto& tasks = monitorPid.second;
 
     const auto& taskRet = Utils::getTasksOfPid(pid);
     if (!taskRet.ok) {
@@ -300,6 +310,7 @@ static void asyncNextUpdate() {
     updateCpu();
     updateProgress();
     sendNowCpuInfos();
+    updateProgressChange();
     asyncNextUpdate();
   });
 }

@@ -28,6 +28,7 @@ struct CpuInfoT : public flatbuffers::NativeTable {
   typedef CpuInfo TableType;
   std::string name{};
   float usage = 0.0f;
+  uint64_t timestamps = 0;
 };
 
 struct CpuInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
@@ -35,7 +36,8 @@ struct CpuInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef CpuInfoBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
-    VT_USAGE = 6
+    VT_USAGE = 6,
+    VT_TIMESTAMPS = 8
   };
   const flatbuffers::String *name() const {
     return GetPointer<const flatbuffers::String *>(VT_NAME);
@@ -43,11 +45,15 @@ struct CpuInfo FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   float usage() const {
     return GetField<float>(VT_USAGE, 0.0f);
   }
+  uint64_t timestamps() const {
+    return GetField<uint64_t>(VT_TIMESTAMPS, 0);
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
            VerifyField<float>(verifier, VT_USAGE, 4) &&
+           VerifyField<uint64_t>(verifier, VT_TIMESTAMPS, 8) &&
            verifier.EndTable();
   }
   CpuInfoT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -65,6 +71,9 @@ struct CpuInfoBuilder {
   void add_usage(float usage) {
     fbb_.AddElement<float>(CpuInfo::VT_USAGE, usage, 0.0f);
   }
+  void add_timestamps(uint64_t timestamps) {
+    fbb_.AddElement<uint64_t>(CpuInfo::VT_TIMESTAMPS, timestamps, 0);
+  }
   explicit CpuInfoBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -79,8 +88,10 @@ struct CpuInfoBuilder {
 inline flatbuffers::Offset<CpuInfo> CreateCpuInfo(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::String> name = 0,
-    float usage = 0.0f) {
+    float usage = 0.0f,
+    uint64_t timestamps = 0) {
   CpuInfoBuilder builder_(_fbb);
+  builder_.add_timestamps(timestamps);
   builder_.add_usage(usage);
   builder_.add_name(name);
   return builder_.Finish();
@@ -89,12 +100,14 @@ inline flatbuffers::Offset<CpuInfo> CreateCpuInfo(
 inline flatbuffers::Offset<CpuInfo> CreateCpuInfoDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
-    float usage = 0.0f) {
+    float usage = 0.0f,
+    uint64_t timestamps = 0) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   return cpu_monitor::msg::CreateCpuInfo(
       _fbb,
       name__,
-      usage);
+      usage,
+      timestamps);
 }
 
 flatbuffers::Offset<CpuInfo> CreateCpuInfo(flatbuffers::FlatBufferBuilder &_fbb, const CpuInfoT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
@@ -103,6 +116,7 @@ struct CpuMsgT : public flatbuffers::NativeTable {
   typedef CpuMsg TableType;
   std::unique_ptr<cpu_monitor::msg::CpuInfoT> ave{};
   std::vector<std::unique_ptr<cpu_monitor::msg::CpuInfoT>> cores{};
+  uint64_t timestamps = 0;
   CpuMsgT() = default;
   CpuMsgT(const CpuMsgT &o);
   CpuMsgT(CpuMsgT&&) FLATBUFFERS_NOEXCEPT = default;
@@ -114,13 +128,17 @@ struct CpuMsg FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef CpuMsgBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_AVE = 4,
-    VT_CORES = 6
+    VT_CORES = 6,
+    VT_TIMESTAMPS = 8
   };
   const cpu_monitor::msg::CpuInfo *ave() const {
     return GetPointer<const cpu_monitor::msg::CpuInfo *>(VT_AVE);
   }
   const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *cores() const {
     return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *>(VT_CORES);
+  }
+  uint64_t timestamps() const {
+    return GetField<uint64_t>(VT_TIMESTAMPS, 0);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -129,6 +147,7 @@ struct CpuMsg FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            VerifyOffset(verifier, VT_CORES) &&
            verifier.VerifyVector(cores()) &&
            verifier.VerifyVectorOfTables(cores()) &&
+           VerifyField<uint64_t>(verifier, VT_TIMESTAMPS, 8) &&
            verifier.EndTable();
   }
   CpuMsgT *UnPack(const flatbuffers::resolver_function_t *_resolver = nullptr) const;
@@ -146,6 +165,9 @@ struct CpuMsgBuilder {
   void add_cores(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> cores) {
     fbb_.AddOffset(CpuMsg::VT_CORES, cores);
   }
+  void add_timestamps(uint64_t timestamps) {
+    fbb_.AddElement<uint64_t>(CpuMsg::VT_TIMESTAMPS, timestamps, 0);
+  }
   explicit CpuMsgBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -160,8 +182,10 @@ struct CpuMsgBuilder {
 inline flatbuffers::Offset<CpuMsg> CreateCpuMsg(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<cpu_monitor::msg::CpuInfo> ave = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> cores = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>> cores = 0,
+    uint64_t timestamps = 0) {
   CpuMsgBuilder builder_(_fbb);
+  builder_.add_timestamps(timestamps);
   builder_.add_cores(cores);
   builder_.add_ave(ave);
   return builder_.Finish();
@@ -170,12 +194,14 @@ inline flatbuffers::Offset<CpuMsg> CreateCpuMsg(
 inline flatbuffers::Offset<CpuMsg> CreateCpuMsgDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<cpu_monitor::msg::CpuInfo> ave = 0,
-    const std::vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *cores = nullptr) {
+    const std::vector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> *cores = nullptr,
+    uint64_t timestamps = 0) {
   auto cores__ = cores ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>>(*cores) : 0;
   return cpu_monitor::msg::CreateCpuMsg(
       _fbb,
       ave,
-      cores__);
+      cores__,
+      timestamps);
 }
 
 flatbuffers::Offset<CpuMsg> CreateCpuMsg(flatbuffers::FlatBufferBuilder &_fbb, const CpuMsgT *_o, const flatbuffers::rehasher_function_t *_rehasher = nullptr);
@@ -191,6 +217,7 @@ inline void CpuInfo::UnPackTo(CpuInfoT *_o, const flatbuffers::resolver_function
   (void)_resolver;
   { auto _e = name(); if (_e) _o->name = _e->str(); }
   { auto _e = usage(); _o->usage = _e; }
+  { auto _e = timestamps(); _o->timestamps = _e; }
 }
 
 inline flatbuffers::Offset<CpuInfo> CpuInfo::Pack(flatbuffers::FlatBufferBuilder &_fbb, const CpuInfoT* _o, const flatbuffers::rehasher_function_t *_rehasher) {
@@ -203,14 +230,17 @@ inline flatbuffers::Offset<CpuInfo> CreateCpuInfo(flatbuffers::FlatBufferBuilder
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const CpuInfoT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
   auto _name = _o->name.empty() ? 0 : _fbb.CreateString(_o->name);
   auto _usage = _o->usage;
+  auto _timestamps = _o->timestamps;
   return cpu_monitor::msg::CreateCpuInfo(
       _fbb,
       _name,
-      _usage);
+      _usage,
+      _timestamps);
 }
 
 inline CpuMsgT::CpuMsgT(const CpuMsgT &o)
-      : ave((o.ave) ? new cpu_monitor::msg::CpuInfoT(*o.ave) : nullptr) {
+      : ave((o.ave) ? new cpu_monitor::msg::CpuInfoT(*o.ave) : nullptr),
+        timestamps(o.timestamps) {
   cores.reserve(o.cores.size());
   for (const auto &cores_ : o.cores) { cores.emplace_back((cores_) ? new cpu_monitor::msg::CpuInfoT(*cores_) : nullptr); }
 }
@@ -218,6 +248,7 @@ inline CpuMsgT::CpuMsgT(const CpuMsgT &o)
 inline CpuMsgT &CpuMsgT::operator=(CpuMsgT o) FLATBUFFERS_NOEXCEPT {
   std::swap(ave, o.ave);
   std::swap(cores, o.cores);
+  std::swap(timestamps, o.timestamps);
   return *this;
 }
 
@@ -232,6 +263,7 @@ inline void CpuMsg::UnPackTo(CpuMsgT *_o, const flatbuffers::resolver_function_t
   (void)_resolver;
   { auto _e = ave(); if (_e) { if(_o->ave) { _e->UnPackTo(_o->ave.get(), _resolver); } else { _o->ave = std::unique_ptr<cpu_monitor::msg::CpuInfoT>(_e->UnPack(_resolver)); } } else if (_o->ave) { _o->ave.reset(); } }
   { auto _e = cores(); if (_e) { _o->cores.resize(_e->size()); for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) { if(_o->cores[_i]) { _e->Get(_i)->UnPackTo(_o->cores[_i].get(), _resolver); } else { _o->cores[_i] = std::unique_ptr<cpu_monitor::msg::CpuInfoT>(_e->Get(_i)->UnPack(_resolver)); }; } } else { _o->cores.resize(0); } }
+  { auto _e = timestamps(); _o->timestamps = _e; }
 }
 
 inline flatbuffers::Offset<CpuMsg> CpuMsg::Pack(flatbuffers::FlatBufferBuilder &_fbb, const CpuMsgT* _o, const flatbuffers::rehasher_function_t *_rehasher) {
@@ -244,10 +276,12 @@ inline flatbuffers::Offset<CpuMsg> CreateCpuMsg(flatbuffers::FlatBufferBuilder &
   struct _VectorArgs { flatbuffers::FlatBufferBuilder *__fbb; const CpuMsgT* __o; const flatbuffers::rehasher_function_t *__rehasher; } _va = { &_fbb, _o, _rehasher}; (void)_va;
   auto _ave = _o->ave ? CreateCpuInfo(_fbb, _o->ave.get(), _rehasher) : 0;
   auto _cores = _o->cores.size() ? _fbb.CreateVector<flatbuffers::Offset<cpu_monitor::msg::CpuInfo>> (_o->cores.size(), [](size_t i, _VectorArgs *__va) { return CreateCpuInfo(*__va->__fbb, __va->__o->cores[i].get(), __va->__rehasher); }, &_va ) : 0;
+  auto _timestamps = _o->timestamps;
   return cpu_monitor::msg::CreateCpuMsg(
       _fbb,
       _ave,
-      _cores);
+      _cores,
+      _timestamps);
 }
 
 inline const cpu_monitor::msg::CpuMsg *GetCpuMsg(const void *buf) {

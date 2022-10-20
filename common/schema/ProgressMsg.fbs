@@ -4,6 +4,7 @@ table ThreadInfo {
   name: string;
   id: uint64;
   usage: float32;
+  timestamps: uint64;
 }
 
 table ProgressInfo {
@@ -14,6 +15,7 @@ table ProgressInfo {
 
 table ProgressMsg {
   infos: [ProgressInfo];
+  timestamps: uint64;
 }
 
 root_type ProgressMsg;

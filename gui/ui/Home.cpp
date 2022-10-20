@@ -38,6 +38,9 @@ static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
 static void initRpcTask() {
   s_rpc->subscribe("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
+    for (const auto& item : msg->cores) {
+      item->timestamps = msg->timestamps;
+    }
     s_msg_cpus.push_back(std::move(msg.msg));
   });
 
@@ -47,6 +50,7 @@ static void initRpcTask() {
       auto& progressInfos = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
       s_pid_current_thread_num[pInfo->id] = pInfo->infos.size();
       for (auto& item : pInfo->infos) {
+        item->timestamps = progressMsg.timestamps;
         progressInfos[item->id].push_back(std::move(item));
       }
     }
@@ -111,6 +115,10 @@ void Home::onDraw() {
 
   ImGui::SameLine();
   ImGui::Checkbox("Show Cores", &ui::flag::showCpuCores);
+
+  static auto calcTimestampsFromStart = [](uint64_t timestamps) -> double {
+    return double(timestamps - s_msg_cpus.front().timestamps) / 1000;
+  };
 
   {
     // NAME
@@ -219,7 +227,8 @@ void Home::onDraw() {
       ImPlot::PlotLineG(
           s_msg_cpus.front().ave->name.c_str(),
           (ImPlotGetter)[](int idx, void* user_data) {
-            return ImPlotPoint{(double)idx, s_msg_cpus[idx].ave->usage};
+            auto& info = s_msg_cpus[idx];
+            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave->usage};
           },
           nullptr, (int)s_msg_cpus.size());
 
@@ -228,11 +237,13 @@ void Home::onDraw() {
       ImPlot::PlotShadedG(
           s_msg_cpus.front().ave->name.c_str(),
           (ImPlotGetter)[](int idx, void* user_data) {
-            return ImPlotPoint{(double)idx, 0};
+            auto& info = s_msg_cpus[idx];
+            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), 0};
           },
           nullptr,
           (ImPlotGetter)[](int idx, void* user_data) {
-            return ImPlotPoint{(double)idx, s_msg_cpus[idx].ave->usage};
+            auto& info = s_msg_cpus[idx];
+            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave->usage};
           },
           nullptr, (int)s_msg_cpus.size(), 0);
       ImPlot::PopStyleVar();
@@ -265,7 +276,8 @@ void Home::onDraw() {
         ImPlot::PlotLineG(
             s_msg_cpus.front().cores[indexNow]->name.c_str(),
             (ImPlotGetter)[](int idx, void* user_data) {
-              return ImPlotPoint{(double)idx, s_msg_cpus[idx].cores[indexNow]->usage};
+              auto& info = s_msg_cpus[idx].cores[indexNow];
+              return ImPlotPoint{calcTimestampsFromStart(info->timestamps), info->usage};
             },
             nullptr, (int)s_msg_cpus.size());
       }
@@ -309,7 +321,8 @@ void Home::onDraw() {
           ImPlot::PlotLineG(
               labelName.c_str(),
               (ImPlotGetter)[](int idx, void* user_data) {
-                return ImPlotPoint{(double)idx, (*threadInfos)[idx]->usage};
+                auto& info = (*threadInfos)[idx];
+                return ImPlotPoint{calcTimestampsFromStart(info->timestamps), info->usage};
               },
               nullptr, (int)threadInfos->size());
         }
