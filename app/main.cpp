@@ -332,6 +332,7 @@ static void runApp() {
 
 static void showHelp() {
   printf(R"(Usage:
+-d : 刷新间隔/ms 默认1000
 -s : 以服务方式启动（配合GUI） 并指定端口号
 -c : 监控所有CPU核
 -p : 指定监控的PID 半角逗号分隔
@@ -345,8 +346,12 @@ int main(int argc, char** argv) {
   }
 
   int ret;
-  while ((ret = getopt(argc, argv, "s:c::p:n:")) != -1) {
+  while ((ret = getopt(argc, argv, "d:s:c::p:n:")) != -1) {
     switch (ret) {
+      case 'd': {
+        s_update_interval_ms = std::stoul(optarg, nullptr, 10);
+        LOGD("s_update_interval_ms: %u", s_update_interval_ms);
+      } break;
       case 's': {
         s_server_port = std::stoul(optarg, nullptr, 10);
         LOGD("s_server_port: %u", s_server_port);
