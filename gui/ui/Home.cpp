@@ -14,6 +14,16 @@
 
 using namespace cpu_monitor;
 
+namespace ui {
+namespace flag {
+bool useADB = true;
+bool showCpuAve = true;
+bool showCpuCores = true;
+std::string serverAddr = "10.238.21.156";
+std::string serverPort = "8088";
+}  // namespace flag
+}  // namespace ui
+
 // rpc
 static std::unique_ptr<asio_net::rpc_client> s_rpc_client;
 static std::shared_ptr<RpcCore::Rpc> s_rpc;
@@ -75,7 +85,12 @@ static void connectServer() {
     startAutoConnect();
   };
   LOGI("try open...");
-  client->open("10.238.21.156", "8088");
+  if (ui::flag::useADB) {
+    system("adb forward tcp:8088 tcp:8088");
+    client->open("localhost", "8088");
+  } else {
+    client->open(ui::flag::serverAddr, ui::flag::serverPort);
+  }
 }
 
 static void startAutoConnect() {
@@ -87,13 +102,6 @@ static void startAutoConnect() {
   });
 }
 
-namespace ui {
-namespace flag {
-bool showCpuAve = true;
-bool showCpuCores = true;
-}  // namespace flag
-}  // namespace ui
-
 void Home::onDraw() {
   ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
@@ -102,13 +110,31 @@ void Home::onDraw() {
     if (s_rpc) {
       s_rpc->cmd("get_added_pids")
           ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
-            LOGD("get_added_pids rsp:");
+            LOGI("get_added_pids rsp:");
             for (const auto& item : msg->infos) {
-              LOGD("pid: %llu, name: %s", item->id, item->name.c_str());
+              LOGI("pid: %llu, name: %s", item->id, item->name.c_str());
             }
           })
           ->call();
     }
+  }
+
+  ImGui::SameLine();
+  ImGui::Checkbox("ADB", &ui::flag::useADB);
+
+  if (!ui::flag::useADB) {
+    ImGui::PushItemWidth(120);
+    {
+      ui::flag::serverAddr.reserve(64);
+      ImGui::SameLine();
+      ImGui::InputText("ip##input_server_ip", (char*)ui::flag::serverAddr.data(), ui::flag::serverAddr.capacity());
+    }
+    {
+      ui::flag::serverPort.reserve(64);
+      ImGui::SameLine();
+      ImGui::InputText("port##input_server_port", (char*)ui::flag::serverPort.data(), ui::flag::serverPort.capacity());
+    }
+    ImGui::PopItemWidth();
   }
 
   ImGui::SameLine();
@@ -137,12 +163,12 @@ void Home::onDraw() {
         if (name[0] == 0) {
           LOGW("name empty");
         } else {
-          LOGD("add name: %s", name.c_str());
+          LOGI("add name: %s", name.c_str());
           if (s_rpc) {
             s_rpc->cmd("add_name")
                 ->msg(RpcCore::String(name.c_str()))  // NOLINT
                 ->rsp([](const RpcCore::String& msg) {
-                  LOGD("add name rsp: %s", msg.c_str());
+                  LOGI("add name rsp: %s", msg.c_str());
                 })
                 ->call();
           }
@@ -153,12 +179,12 @@ void Home::onDraw() {
         if (name[0] == 0) {
           LOGW("name empty");
         } else {
-          LOGD("del name: %s", name.c_str());
+          LOGI("del name: %s", name.c_str());
           if (s_rpc) {
             s_rpc->cmd("del_name")
                 ->msg(RpcCore::String(name.c_str()))  // NOLINT
                 ->rsp([](const RpcCore::String& msg) {
-                  LOGD("del name rsp: %s", msg.c_str());
+                  LOGI("del name rsp: %s", msg.c_str());
                 })
                 ->call();
           }
@@ -180,12 +206,12 @@ void Home::onDraw() {
         if (pid[0] == 0) {
           LOGW("pid empty");
         } else {
-          LOGD("add pid: %s", pid.c_str());
+          LOGI("add pid: %s", pid.c_str());
           if (s_rpc) {
             s_rpc->cmd("add_pid")
                 ->msg(RpcCore::String(pid.c_str()))  // NOLINT
                 ->rsp([](const RpcCore::String& msg) {
-                  LOGD("add pid rsp: %s", msg.c_str());
+                  LOGI("add pid rsp: %s", msg.c_str());
                 })
                 ->call();
           }
@@ -196,12 +222,12 @@ void Home::onDraw() {
         if (pid[0] == 0) {
           LOGW("pid empty");
         } else {
-          LOGD("del pid: %s", pid.c_str());
+          LOGI("del pid: %s", pid.c_str());
           if (s_rpc) {
             s_rpc->cmd("del_pid")
                 ->msg(RpcCore::String(pid.c_str()))  // NOLINT
                 ->rsp([](const RpcCore::String& msg) {
-                  LOGD("del pid rsp: %s", msg.c_str());
+                  LOGI("del pid rsp: %s", msg.c_str());
                 })
                 ->call();
           }
@@ -317,10 +343,20 @@ void Home::onDraw() {
     }
   }
 
+  // imgui demo
+#if 0
+  {
+    static bool open = true;
+    ImGui::ShowDemoWindow(&open);
+  }
+#endif
+
   // plot demo
 #if 0
+  {
     static bool open = true;
     ImPlot::ShowDemoWindow(&open);
+  }
 #endif
 }
 
