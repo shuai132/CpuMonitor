@@ -51,6 +51,8 @@ std::string makeTaskStatPath(PID_t pid, TaskId_t tid) {
 }
 
 PID_t getFirstPidByName(const std::string& name) {
+  auto progressName = name.size() > 16 ? name.substr(0, 15) : name;
+
   DIR* dir = opendir("/proc");
   defer {
     closedir(dir);
@@ -78,7 +80,7 @@ PID_t getFirstPidByName(const std::string& name) {
     file >> tmpName;
     file.close();
 
-    if (std::string(name).compare(0, tmpName.size(), tmpName) == 0) {
+    if (tmpName == progressName) {
       return std::strtoul(pidName, nullptr, 10);
     }
   }
