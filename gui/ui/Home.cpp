@@ -102,6 +102,7 @@ void Home::onDraw() {
     if (s_rpc) {
       s_rpc->cmd("get_added_pids")
           ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
+            LOGD("get_added_pids rsp:");
             for (const auto& item : msg->infos) {
               LOGD("pid: %llu, name: %s", item->id, item->name.c_str());
             }
@@ -211,17 +212,10 @@ void Home::onDraw() {
 
   // ave
   if (ui::flag::showCpuAve && ImPlot::BeginPlot("Cpu Ave Usages (%/sec)")) {
-    int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
 
-    if (s_msg_cpus.size() <= axisXMin) {
-      axisFlags |= ImPlotAxisFlags_Lock;
-    } else {
-      axisFlags |= ImPlotAxisFlags_AutoFit;
-    }
-
-    ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_Lock);
+    ImPlot::SetupAxes("Time(sec)", "Usages(%)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_Lock);
     ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_NoButtons);
     if (!s_msg_cpus.empty()) {
       ImPlot::PlotLineG(
@@ -257,15 +251,11 @@ void Home::onDraw() {
     return " cores: " + std::to_string(s_msg_cpus.front().cores.size());
   }();
   if (ui::flag::showCpuCores && ImPlot::BeginPlot(("Cpu Cores Usages (%/sec)" + coreInfo).c_str())) {
-    int axisFlags = ImPlotAxisFlags_NoLabel;
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
 
-    if (s_msg_cpus.size() <= axisXMin) {
-      axisFlags |= ImPlotAxisFlags_Lock;
-    } else {
-      axisFlags |= ImPlotAxisFlags_AutoFit;
-    }
+    int axisFlags = ImPlotAxisFlags_NoLabel;
+    axisFlags |= ImPlotAxisFlags_AutoFit;
 
     ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, axisFlags);
     ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Outside);
@@ -296,15 +286,11 @@ void Home::onDraw() {
       if (!ImPlot::BeginPlot(plotName.c_str())) {
         break;
       }
-      int axisFlags = ImPlotAxisFlags_NoLabel;
       const int axisXMin = 10;
       ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
 
-      if (s_msg_cpus.size() <= axisXMin) {
-        axisFlags |= ImPlotAxisFlags_Lock;
-      } else {
-        axisFlags |= ImPlotAxisFlags_AutoFit;
-      }
+      int axisFlags = ImPlotAxisFlags_NoLabel;
+      axisFlags |= ImPlotAxisFlags_AutoFit;
 
       ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
       ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
