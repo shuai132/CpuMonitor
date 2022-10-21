@@ -1,5 +1,7 @@
 #include "CpuMonitor.h"
 
+#include <cassert>
+
 namespace cpu_monitor {
 
 CpuMonitor::CpuMonitor() = default;
@@ -23,7 +25,7 @@ CpuStat &CpuMonitor::cpuTickPre() {
 void CpuMonitor::updateFromFile(FILE *fp) {
   auto &cpuTick = cpuTickCurr();
   // clang-format off
-  fscanf(fp, // NOLINT
+  int ret = fscanf(fp, // NOLINT
         "%s"
         " %" PRIu64
         " %" PRIu64
@@ -47,6 +49,8 @@ void CpuMonitor::updateFromFile(FILE *fp) {
         &(cpuTick.ticks[CpuT::STEAL]),
         &(cpuTick.ticks[CpuT::GUEST]),
         &(cpuTick.ticks[CpuT::GUEST_NICE]));
+  assert(ret);
+  (void)ret;
   // clang-format on
 }
 
