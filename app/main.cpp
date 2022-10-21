@@ -19,9 +19,16 @@
 
 using namespace cpu_monitor;
 
+// all argv
+struct {
+  bool h = false;
+  uint32_t d_update_interval_ms = 1000;
+  bool s_run_server = false;
+  uint32_t s_server_port = 8088;
+  bool c_only_monitor_cpu = false;
+} s_argv;
+
 // main logic
-static uint32_t s_server_port = 8088;
-static uint32_t s_update_interval_ms = 1000;
 static std::unique_ptr<asio::io_context> s_context;
 static std::unique_ptr<asio::steady_timer> s_timer_update;
 
@@ -185,7 +192,7 @@ static void sendNowCpuInfos() {
 
 static void runServer() {
   using namespace asio_net;
-  s_rpc_server = std::make_unique<rpc_server>(*s_context, 8088, MessageMaxByteSize);
+  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, MessageMaxByteSize);
   auto& server = s_rpc_server;
   server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
     LOGD("on_session");
@@ -204,7 +211,7 @@ static void runServer() {
     initRpcTask();
   };
 
-  LOGI("start server: port: %d", s_server_port);
+  LOGI("start server: port: %d", s_argv.s_server_port);
   server->start(true);
 }
 
@@ -305,7 +312,7 @@ static bool addMonitorPidByName(const std::string& name) {
 }
 
 static void asyncNextUpdate() {
-  s_timer_update->expires_after(std::chrono::milliseconds(s_update_interval_ms));
+  s_timer_update->expires_after(std::chrono::milliseconds(s_argv.d_update_interval_ms));
   s_timer_update->async_wait([](asio::error_code ec) {
     updateCpu();
     updateProgress();
@@ -343,10 +350,12 @@ static void runApp() {
 
 static void showHelp() {
   printf(R"(Usage:
+-h : 打印此帮助
 -d : 刷新间隔/ms 默认1000
--s : 以服务方式启动（配合GUI） 并指定端口号
--c : 监控所有CPU核
--p : 指定监控的PID 半角逗号分隔
+-s : 以服务方式启动 配合GUI使用
+-p : 指定开启的服务端口号
+-c : 仅在终端打印所有CPU核使用率
+-i : 指定监控的PID 半角逗号分隔
 -n : 指定监控进程名 半角逗号分隔
 )");
 }
@@ -357,29 +366,32 @@ int main(int argc, char** argv) {
   }
 
   int ret;
-  while ((ret = getopt(argc, argv, "d:s:c::p:n:")) != -1) {
+  while ((ret = getopt(argc, argv, "h::d:s::c::p:n:")) != -1) {
     switch (ret) {
+      case 'h': {
+        s_argv.h = true;
+      } break;
       case 'd': {
-        s_update_interval_ms = std::stoul(optarg, nullptr, 10);
-        LOGD("s_update_interval_ms: %u", s_update_interval_ms);
+        s_argv.d_update_interval_ms = std::stoul(optarg, nullptr, 10);
+        LOGD("update_interval_ms: %u", s_argv.d_update_interval_ms);
       } break;
       case 's': {
-        s_server_port = std::stoul(optarg, nullptr, 10);
-        LOGD("s_server_port: %u", s_server_port);
-        initApp();
-        runServer();
+        s_argv.s_run_server = true;
       } break;
-      case 'c':
-        monitorCpu();
       case 'p': {
+        s_argv.s_server_port = std::stoul(optarg, nullptr, 10);
+        LOGD("server_port: %u", s_argv.s_server_port);
+      } break;
+      case 'c': {
+        s_argv.c_only_monitor_cpu = true;
+      } break;
+      case 'i': {
         auto& allPids = optarg;
         for (const auto& pidStr : string_utils::Split(allPids, ",", true)) {
           auto pid = std::stoul(pidStr, nullptr, 10);
           LOGD("add pid: %lu", pid);
           addMonitorPid(pid);
         }
-        initApp();
-        runApp();
       } break;
       case 'n': {
         auto& allNames = optarg;
@@ -387,13 +399,27 @@ int main(int argc, char** argv) {
           LOGD("add name: %s", name.c_str());
           addMonitorPidByName(name);
         }
-        initApp();
-        runApp();
       } break;
-      default:
-        showHelp();
-        break;
+      default: {
+        s_argv.h = true;
+      } break;
     }
+  }
+
+  if (s_argv.h) {
+    showHelp();
+    return 0;
+  }
+
+  if (s_argv.c_only_monitor_cpu) {
+    monitorCpu();
+  }
+
+  initApp();
+  if (s_argv.s_run_server) {
+    runServer();
+  } else {
+    runApp();
   }
   return 0;
 }
