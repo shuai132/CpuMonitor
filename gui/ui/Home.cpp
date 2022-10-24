@@ -19,8 +19,8 @@ namespace flag {
 bool useADB = true;
 bool showCpuAve = true;
 bool showCpuCores = true;
-std::string serverAddr = "10.238.21.156";
-std::string serverPort = "8088";
+std::string serverAddr = "10.238.21.156";  // NOLINT
+std::string serverPort = "8088";           // NOLINT
 }  // namespace flag
 }  // namespace ui
 

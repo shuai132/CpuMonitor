@@ -107,13 +107,12 @@
 extern int LOG_PRINTF_IMPL(const char *fmt, ...);
 #endif
 
-#define LOG(fmt, ...)           do{ LOG_PRINTF_IMPL(LOG_COLOR_GREEN "[*]: " fmt LOG_END, ##__VA_ARGS__); } while(0)
-
-#define LOGT(tag, fmt, ...)     do{ LOG_PRINTF_IMPL(LOG_COLOR_BLUE "[" tag "]: " fmt LOG_END, ##__VA_ARGS__); } while(0)
-#define LOGI(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_YELLOW "[I]: %s: " fmt LOG_END, LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
-#define LOGW(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_CARMINE "[W]: %s: %s: %d: " fmt LOG_END, LOG_BASE_FILENAME, __func__, __LINE__, ##__VA_ARGS__); } while(0)
-#define LOGE(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_RED "[E]: %s: %s: %d: " fmt LOG_END, LOG_BASE_FILENAME, __func__, __LINE__, ##__VA_ARGS__); } while(0)
-#define LOGF(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_CYAN "[!]: %s: %s: %d: " fmt LOG_END, LOG_BASE_FILENAME, __func__, __LINE__, ##__VA_ARGS__); LOG_EXIT_PROGRAM(); } while(0)
+#define LOG(fmt, ...)           do{ LOG_PRINTF_IMPL(LOG_COLOR_GREEN   "[*]: "             fmt LOG_END, ##__VA_ARGS__); } while(0)
+#define LOGT(tag, fmt, ...)     do{ LOG_PRINTF_IMPL(LOG_COLOR_BLUE    "[" tag "]: "       fmt LOG_END, ##__VA_ARGS__); } while(0)
+#define LOGI(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_YELLOW  "[I]: %s: "         fmt LOG_END, LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
+#define LOGW(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_CARMINE "[W]: %s: %s: %d: " fmt LOG_END, LOG_BASE_FILENAME, __func__, __LINE__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
+#define LOGE(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_RED     "[E]: %s: %s: %d: " fmt LOG_END, LOG_BASE_FILENAME, __func__, __LINE__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
+#define LOGF(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_CYAN    "[!]: %s: %s: %d: " fmt LOG_END, LOG_BASE_FILENAME, __func__, __LINE__, ##__VA_ARGS__); LOG_EXIT_PROGRAM(); } while(0) // NOLINT(bugprone-lambda-function-name)
 
 #if defined(LOG_IN_LIB) && !defined(LOG_SHOW_DEBUG) && !defined(LOG_NDEBUG)
 #define LOG_NDEBUG
@@ -122,11 +121,11 @@ extern int LOG_PRINTF_IMPL(const char *fmt, ...);
 #if defined(NDEBUG) || defined(LOG_NDEBUG)
 #define LOGD(fmt, ...)          ((void)0)
 #else
-#define LOGD(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_DEFAULT "[D]: %s: " fmt LOG_END, LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
+#define LOGD(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_DEFAULT "[D]: %s: "         fmt LOG_END, LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
 #endif
 
 #if defined(LOG_SHOW_VERBOSE)
-#define LOGV(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_DEFAULT "[V]: %s: " fmt LOG_END, LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
+#define LOGV(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_DEFAULT "[V]: %s: "         fmt LOG_END, LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
 #else
 #define LOGV(fmt, ...)          ((void)0)
 #endif
