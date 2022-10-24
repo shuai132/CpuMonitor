@@ -123,7 +123,12 @@ int main(int, char**) {
     }();
     (void)_windowSizeInit;
 
-    ImGui::SetWindowSize({(float)display_w, (float)display_h});
+    // fit scale by hidpi
+    {
+      float x_scale, y_scale;
+      glfwGetWindowContentScale(window, &x_scale, &y_scale);
+      ImGui::SetWindowSize({(float)display_w / x_scale, (float)display_h / y_scale});
+    }
 
     App::instance()->poll();
 
