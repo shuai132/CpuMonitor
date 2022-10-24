@@ -1,5 +1,7 @@
 #include "Home.h"
 
+#include <list>
+
 #include "App.h"
 #include "Common.h"
 #include "CpuMsg_generated.h"
@@ -40,7 +42,17 @@ struct ProgressKey {
 };
 
 using ThreadInfosType = std::vector<std::unique_ptr<cpu_monitor::msg::ThreadInfoT>>;
-using ThreadInfoTable = std::map<TaskId_t, ThreadInfosType>;
+
+struct ThreadInfoKey {
+  ThreadInfoKey(TaskId_t id) : id(id) {}  // NOLINT
+  ThreadInfoKey(TaskId_t id, double usageSum) : id(id), usageSum(usageSum) {}
+  TaskId_t id;
+  double usageSum = 0;
+  friend inline bool operator<(const ThreadInfoKey& a, const ThreadInfoKey& b) {
+    return a.usageSum > b.usageSum;
+  }
+};
+using ThreadInfoTable = std::list<std::pair<ThreadInfoKey, ThreadInfosType>>;
 static std::map<ProgressKey, ThreadInfoTable> s_msg_pids;
 static std::map<PID_t, uint> s_pid_current_thread_num;
 
@@ -61,8 +73,20 @@ static void initRpcTask() {
       s_pid_current_thread_num[pInfo->id] = pInfo->infos.size();
       for (auto& item : pInfo->infos) {
         item->timestamps = progressMsg.timestamps;
-        progressInfos[item->id].push_back(std::move(item));
+        auto iter = std::find_if(progressInfos.begin(), progressInfos.end(), [&](auto& v) {
+          return v.first.id == item->id;
+        });
+        if (iter != progressInfos.cend()) {
+          iter->first.usageSum += item->usage;
+          iter->second.push_back(std::move(item));
+        } else {
+          ThreadInfoKey key{(TaskId_t)item->id, item->usage};
+          ThreadInfosType value;
+          value.push_back(std::move(item));
+          progressInfos.push_back(std::make_pair(key, std::move(value)));
+        }
       }
+      progressInfos.sort();
     }
   });
 }
