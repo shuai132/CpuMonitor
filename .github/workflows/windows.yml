@@ -1,0 +1,40 @@
+name: Windows
+
+on: [push, pull_request]
+
+jobs:
+  Windows:
+    runs-on: windows-latest
+    env:
+      targetName: CpuMonitor
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: CMake Build
+        shell: powershell
+        run: |
+          $env:path=$env:path.Replace("C:\Program Files\Git", "HIDE_GIT")
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release .. -G "MinGW Makefiles"
+          mingw32-make CpuMonitor -j2
+          mv gui/${{ env.targetName }}.exe ${{ env.targetName }}.exe
+          Compress-Archive -Path ${{ env.targetName }}.exe ${{ env.targetName }}.zip
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ env.targetName }}_${{ runner.os }}_${{ github.sha }}
+          path: build/${{ env.targetName }}.zip
+
+      - name: Make Release
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/${{ env.targetName }}.zip
+          asset_name: ${{ env.targetName }}_${{ runner.os }}.zip
+          tag: ${{ github.ref }}
+          overwrite: true

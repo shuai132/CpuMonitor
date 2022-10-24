@@ -1,5 +1,6 @@
 #include "Home.h"
 
+#include <cinttypes>
 #include <list>
 
 #include "App.h"
@@ -54,7 +55,7 @@ struct ThreadInfoKey {
 };
 using ThreadInfoTable = std::list<std::pair<ThreadInfoKey, ThreadInfosType>>;
 static std::map<ProgressKey, ThreadInfoTable> s_msg_pids;
-static std::map<PID_t, uint> s_pid_current_thread_num;
+static std::map<PID_t, uint32_t> s_pid_current_thread_num;
 
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
@@ -111,7 +112,8 @@ static void connectServer() {
   };
   LOGI("try open...");
   if (ui::flag::useADB) {
-    system("adb forward tcp:8088 tcp:8088");
+    auto ret = system("adb forward tcp:8088 tcp:8088");
+    (void)ret;
     client->open("localhost", "8088");
   } else {
     client->open(ui::flag::serverAddr, ui::flag::serverPort);
@@ -137,7 +139,7 @@ void Home::onDraw() {
           ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
             LOGI("get_added_pids rsp:");
             for (const auto& item : msg->infos) {
-              LOGI("pid: %llu, name: %s", item->id, item->name.c_str());
+              LOGI("pid: %" PRIu64 ", name: %s", item->id, item->name.c_str());
             }
           })
           ->call();
@@ -307,10 +309,10 @@ void Home::onDraw() {
 
     ImPlot::SetupAxes("Time(sec)", "Usages(%)", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoLabel, ImPlotAxisFlags_Lock);
     if (!s_msg_cpus.empty()) {
-      const uint cpuCores = s_msg_cpus.front().cores.size();
+      const uint32_t cpuCores = s_msg_cpus.front().cores.size();
       ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
-      for (uint i = 0; i < cpuCores; ++i) {
-        static uint indexNow;
+      for (uint32_t i = 0; i < cpuCores; ++i) {
+        static uint32_t indexNow;
         indexNow = i;
         ImPlot::PlotLineG(
             s_msg_cpus.front().cores[indexNow]->name.c_str(),

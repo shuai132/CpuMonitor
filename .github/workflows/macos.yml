@@ -1,0 +1,38 @@
+name: macOS
+
+on: [push, pull_request]
+
+jobs:
+  macOS:
+    runs-on: macOS-latest
+    env:
+      targetName: CpuMonitor
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: CMake Build
+        run: |
+          mkdir build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make ${{ env.targetName }} -j2
+          mv gui/${{ env.targetName }}.app ${{ env.targetName }}.app
+          zip -r ${{ env.targetName }}.zip ${{ env.targetName }}.app
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ env.targetName }}_${{ runner.os }}_${{ github.sha }}
+          path: build/${{ env.targetName }}.zip
+
+      - name: Make Release
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/${{ env.targetName }}.zip
+          asset_name: ${{ env.targetName }}_${{ runner.os }}.zip
+          tag: ${{ github.ref }}
+          overwrite: true
