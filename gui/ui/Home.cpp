@@ -81,7 +81,8 @@ static void connectServer() {
     s_rpc = nullptr;
     startAutoConnect();
   };
-  client->on_open_failed = [] {
+  client->on_open_failed = [](const std::error_code& ec) {
+    LOGW("on_open_failed: %d, %s", ec.value(), ec.message().c_str());
     startAutoConnect();
   };
   LOGI("try open...");
