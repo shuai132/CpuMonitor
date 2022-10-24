@@ -366,7 +366,7 @@ int main(int argc, char** argv) {
   }
 
   int ret;
-  while ((ret = getopt(argc, argv, "h::d:s::c::p:n:")) != -1) {
+  while ((ret = getopt(argc, argv, "h::d:s::p:c::i:n:")) != -1) {
     switch (ret) {
       case 'h': {
         s_argv.h = true;
