@@ -103,6 +103,7 @@ static void connectServer() {
     initRpcTask();
   };
   client->on_close = [] {
+    LOGI("on_close");
     s_rpc = nullptr;
     startAutoConnect();
   };
@@ -110,13 +111,14 @@ static void connectServer() {
     LOGW("on_open_failed: %d, %s", ec.value(), ec.message().c_str());
     startAutoConnect();
   };
-  LOGI("try open...");
   if (ui::flag::useADB) {
     auto ret = system("adb forward tcp:8088 tcp:8088");
     (void)ret;
-    client->open("localhost", "8088");
+    client->open("localhost", ui::flag::serverPort);
+    LOGI("try open usb: localhost:%s", ui::flag::serverPort.c_str());
   } else {
     client->open(ui::flag::serverAddr, ui::flag::serverPort);
+    LOGI("try open tcp: %s:%s", ui::flag::serverAddr.c_str(), ui::flag::serverPort.c_str());
   }
 }
 
@@ -149,18 +151,21 @@ void Home::onDraw() {
   ImGui::SameLine();
   ImGui::Checkbox("ADB", &ui::flag::useADB);
 
+  // server ip
   if (!ui::flag::useADB) {
-    ImGui::PushItemWidth(120);
-    {
-      ui::flag::serverAddr.reserve(64);
-      ImGui::SameLine();
-      ImGui::InputText("ip##input_server_ip", (char*)ui::flag::serverAddr.data(), ui::flag::serverAddr.capacity());
-    }
-    {
-      ui::flag::serverPort.reserve(64);
-      ImGui::SameLine();
-      ImGui::InputText("port##input_server_port", (char*)ui::flag::serverPort.data(), ui::flag::serverPort.capacity());
-    }
+    ui::flag::serverAddr.reserve(64);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(100);
+    ImGui::InputText("ip##input_server_ip", (char*)ui::flag::serverAddr.data(), ui::flag::serverAddr.capacity());
+    ImGui::PopItemWidth();
+  }
+
+  // port
+  {
+    ui::flag::serverPort.reserve(16);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(40);
+    ImGui::InputText("port##input_server_port", (char*)ui::flag::serverPort.data(), ui::flag::serverPort.capacity());
     ImGui::PopItemWidth();
   }
 
