@@ -1,6 +1,6 @@
 #include "Home.h"
 
-#include <cinttypes>
+#include <cmath>
 #include <list>
 
 #include "App.h"
@@ -59,8 +59,20 @@ static std::map<PID_t, uint32_t> s_pid_current_thread_num;
 
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
 
+static bool s_show_testing = false;
+
+static void cleanData() {
+  s_msg_cpus.clear();
+  s_msg_pids.clear();
+  s_pid_current_thread_num.clear();
+}
+
 static void initRpcTask() {
   s_rpc->subscribe("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
+    if (s_show_testing) {
+      s_show_testing = false;
+      cleanData();
+    }
     for (const auto& item : msg->cores) {
       item->timestamps = msg->timestamps;
     }
@@ -132,23 +144,6 @@ static void startAutoConnect() {
 }
 
 void Home::onDraw() {
-  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-  ImGui::SameLine();
-  if (ImGui::Button("GetPids")) {
-    if (s_rpc) {
-      s_rpc->cmd("get_added_pids")
-          ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
-            LOGI("get_added_pids rsp:");
-            for (const auto& item : msg->infos) {
-              LOGI("pid: %" PRIu64 ", name: %s", item->id, item->name.c_str());
-            }
-          })
-          ->call();
-    }
-  }
-
-  ImGui::SameLine();
   ImGui::Checkbox("ADB", &ui::flag::useADB);
 
   // server ip
@@ -267,6 +262,55 @@ void Home::onDraw() {
       }
     }
   }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Clear")) {
+    cleanData();
+  }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Test") && !s_rpc) {
+    s_show_testing = true;
+    cleanData();
+    for (int i = 0; i < 1000; ++i) {
+      // cpu
+      {
+        msg::CpuMsgT msg;
+        msg.timestamps = i;
+        msg.ave = std::make_unique<cpu_monitor::msg::CpuInfoT>();
+        msg.ave->name = "cpu";
+        msg.ave->usage = (sin((float)i / 10) + 1) * 50;
+
+        for (int j = 0; j < 4; ++j) {
+          auto c = std::make_unique<cpu_monitor::msg::CpuInfoT>();
+          c->name = "cpu" + std::to_string(j);
+          c->usage = (sin((float)(i + j * 10) / 10) + 1) * 50;
+          c->timestamps = i;
+          msg.cores.push_back(std::move(c));
+        }
+        s_msg_cpus.push_back(std::move(msg));
+      }
+    }
+  }
+
+  /*
+  ImGui::SameLine();
+  if (ImGui::Button("GetPids")) {
+    if (s_rpc) {
+      s_rpc->cmd("get_added_pids")
+          ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
+            LOGI("get_added_pids rsp:");
+            for (const auto& item : msg->infos) {
+              LOGI("pid: %" PRIu64 ", name: %s", item->id, item->name.c_str());
+            }
+          })
+          ->call();
+    }
+  }
+  */
+
+  ImGui::SameLine();
+  ImGui::Text("FPS: %.1f", 1000.0f / ImGui::GetIO().Framerate);
 
   // ave
   if (ui::flag::showCpuAve && ImPlot::BeginPlot("Cpu Ave Usages (%/sec)")) {
