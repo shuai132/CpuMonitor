@@ -67,6 +67,30 @@ static void cleanData() {
   s_pid_current_thread_num.clear();
 }
 
+static void createTestData() {
+  s_show_testing = true;
+  cleanData();
+  for (int i = 0; i < 1000; ++i) {
+    // cpu
+    {
+      msg::CpuMsgT msg;
+      msg.timestamps = i;
+      msg.ave = std::make_unique<cpu_monitor::msg::CpuInfoT>();
+      msg.ave->name = "cpu";
+      msg.ave->usage = (sin((float)i / 10) + 1) * 50;
+
+      for (int j = 0; j < 4; ++j) {
+        auto c = std::make_unique<cpu_monitor::msg::CpuInfoT>();
+        c->name = "cpu" + std::to_string(j);
+        c->usage = (sin((float)(i + j * 10) / 10) + 1) * 50;
+        c->timestamps = i;
+        msg.cores.push_back(std::move(c));
+      }
+      s_msg_cpus.push_back(std::move(msg));
+    }
+  }
+}
+
 static void initRpcTask() {
   s_rpc->subscribe("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
     if (s_show_testing) {
@@ -270,27 +294,7 @@ void Home::onDraw() {
 
   ImGui::SameLine();
   if (ImGui::Button("Test") && !s_rpc) {
-    s_show_testing = true;
-    cleanData();
-    for (int i = 0; i < 1000; ++i) {
-      // cpu
-      {
-        msg::CpuMsgT msg;
-        msg.timestamps = i;
-        msg.ave = std::make_unique<cpu_monitor::msg::CpuInfoT>();
-        msg.ave->name = "cpu";
-        msg.ave->usage = (sin((float)i / 10) + 1) * 50;
-
-        for (int j = 0; j < 4; ++j) {
-          auto c = std::make_unique<cpu_monitor::msg::CpuInfoT>();
-          c->name = "cpu" + std::to_string(j);
-          c->usage = (sin((float)(i + j * 10) / 10) + 1) * 50;
-          c->timestamps = i;
-          msg.cores.push_back(std::move(c));
-        }
-        s_msg_cpus.push_back(std::move(msg));
-      }
-    }
+    createTestData();
   }
 
   /*
