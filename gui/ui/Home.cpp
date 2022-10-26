@@ -314,7 +314,7 @@ void Home::onDraw() {
   */
 
   ImGui::SameLine();
-  ImGui::Text("FPS: %.1f", 1000.0f / ImGui::GetIO().Framerate);
+  ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
   // ave
   if (ui::flag::showCpuAve && ImPlot::BeginPlot("Cpu Ave Usages (%/sec)")) {
