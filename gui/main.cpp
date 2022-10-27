@@ -112,10 +112,7 @@ int main(int, char**) {
     static bool _windowSizeInit = [&] {
       auto size = ImGui::GetWindowSize();
       LOGD("last window size: %.0f, %.0f", size.x, size.y);
-      if (size.x == 32 && size.y == 32) {
-        // from imgui init
-        glfwSetWindowSize(window, display_w, display_h);
-      } else {
+      if (size.x != 32 || size.y != 32) {
         glfwSetWindowSize(window, (int)size.x, (int)size.y);
       }
       ImGui::SetWindowPos({0, 0});
