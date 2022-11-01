@@ -22,6 +22,7 @@ CpuMonitorAll::CpuMonitorAll() {
 void CpuMonitorAll::update(bool updateCores) {
   FILE *fp = fopen("/proc/stat", "r");
   defer {
+    if (fp == nullptr) return;
     fclose(fp);
   };
   if (fp == nullptr) throw std::runtime_error("can not open /proc/stat");

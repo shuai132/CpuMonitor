@@ -22,6 +22,8 @@ namespace flag {
 bool useADB = true;
 bool showCpuAve = true;
 bool showCpuCores = true;
+bool showCpu = true;
+bool showMem = true;
 std::string serverAddr = "10.238.21.156";  // NOLINT
 std::string serverPort = "8088";           // NOLINT
 }  // namespace flag
@@ -53,8 +55,21 @@ struct ThreadInfoKey {
     return a.usageSum > b.usageSum;
   }
 };
-using ThreadInfoTable = std::list<std::pair<ThreadInfoKey, ThreadInfosType>>;
-static std::map<ProgressKey, ThreadInfoTable> s_msg_pids;
+
+struct ProgressValue {
+  struct ThreadInfoItem {
+    ThreadInfoKey key;
+    ThreadInfosType cpuInfos;
+    friend inline bool operator<(const ThreadInfoItem& a, const ThreadInfoItem& b) {
+      return a.key < b.key;
+    }
+  };
+  std::list<ThreadInfoItem> threadInfos;
+
+  std::vector<std::unique_ptr<msg::MemInfoT>> memInfos;
+};
+
+static std::map<ProgressKey, ProgressValue> s_msg_pids;
 static std::map<PID_t, uint32_t> s_pid_current_thread_num;
 
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
@@ -97,33 +112,35 @@ static void initRpcTask() {
       s_show_testing = false;
       cleanData();
     }
-    for (const auto& item : msg->cores) {
-      item->timestamps = msg->timestamps;
-    }
     s_msg_cpus.push_back(std::move(msg.msg));
   });
 
   s_rpc->subscribe("on_progress_msg", [](RpcMsg<msg::ProgressMsgT> msg) {
     auto& progressMsg = msg.msg;
     for (auto& pInfo : progressMsg.infos) {
-      auto& progressInfos = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
-      s_pid_current_thread_num[pInfo->id] = pInfo->infos.size();
-      for (auto& item : pInfo->infos) {
-        item->timestamps = progressMsg.timestamps;
-        auto iter = std::find_if(progressInfos.begin(), progressInfos.end(), [&](auto& v) {
-          return v.first.id == item->id;
+      auto& processValue = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
+      auto& threadInfos = processValue.threadInfos;
+      s_pid_current_thread_num[pInfo->id] = pInfo->thread_infos.size();
+      // thread info
+      for (auto& item : pInfo->thread_infos) {
+        auto iter = std::find_if(threadInfos.begin(), threadInfos.end(), [&](auto& v) {
+          return v.key.id == item->id;
         });
-        if (iter != progressInfos.cend()) {
-          iter->first.usageSum += item->usage;
-          iter->second.push_back(std::move(item));
+        if (iter != threadInfos.cend()) {
+          iter->key.usageSum += item->usage;
+          iter->cpuInfos.push_back(std::move(item));
         } else {
           ThreadInfoKey key{(TaskId_t)item->id, item->usage};
           ThreadInfosType value;
           value.push_back(std::move(item));
-          progressInfos.push_back(std::make_pair(key, std::move(value)));
+          threadInfos.push_back(ProgressValue::ThreadInfoItem{key, std::move(value)});
         }
       }
-      progressInfos.sort();
+      threadInfos.sort();
+
+      // mem info
+      auto& memInfos = processValue.memInfos;
+      memInfos.push_back(std::move(pInfo->mem_info));
     }
   });
 }
@@ -189,10 +206,16 @@ void Home::onDraw() {
   }
 
   ImGui::SameLine();
-  ImGui::Checkbox("Show Ave", &ui::flag::showCpuAve);
+  ImGui::Checkbox("Ave##Show Ave", &ui::flag::showCpuAve);
 
   ImGui::SameLine();
-  ImGui::Checkbox("Show Cores", &ui::flag::showCpuCores);
+  ImGui::Checkbox("Cores##Show Cores", &ui::flag::showCpuCores);
+
+  ImGui::SameLine();
+  ImGui::Checkbox("CPU##Show CPU", &ui::flag::showCpu);
+
+  ImGui::SameLine();
+  ImGui::Checkbox("MEM##Show MEM", &ui::flag::showMem);
 
   static auto calcTimestampsFromStart = [](uint64_t timestamps) -> double {
     return double(timestamps - s_msg_cpus.front().timestamps) / 1000;
@@ -383,37 +406,76 @@ void Home::onDraw() {
   {
     for (const auto& msgPid : s_msg_pids) {
       auto& progressKey = msgPid.first;
-      auto& threadInfoTable = msgPid.second;
+      auto& threadInfoTable = msgPid.second.threadInfos;
 
-      auto plotName = "pid: " + std::to_string(progressKey.pid) + " name: " + progressKey.name +
-                      " threads: " + std::to_string(s_pid_current_thread_num[progressKey.pid]);
-      if (!ImPlot::BeginPlot(plotName.c_str())) {
-        break;
-      }
-      const int axisXMin = 10;
-      ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
-
-      int axisFlags = ImPlotAxisFlags_NoLabel;
-      axisFlags |= ImPlotAxisFlags_AutoFit;
-
-      ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
-      ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
-      if (!threadInfoTable.empty()) {
-        for (auto& item : threadInfoTable) {
-          const static ThreadInfosType* threadInfos;
-          threadInfos = &(item.second);
-
-          auto labelName = std::string("tid: ") + std::to_string(threadInfos->front()->id) + " name: " + threadInfos->front()->name;
-          ImPlot::PlotLineG(
-              labelName.c_str(),
-              (ImPlotGetter)[](int idx, void* user_data) {
-                auto& info = (*threadInfos)[idx];
-                return ImPlotPoint{calcTimestampsFromStart(info->timestamps), info->usage};
-              },
-              nullptr, (int)threadInfos->size());
+      // plot thread info
+      if (ui::flag::showCpu) {
+        auto plotName = "pid: " + std::to_string(progressKey.pid) + " name: " + progressKey.name +
+                        " threads: " + std::to_string(s_pid_current_thread_num[progressKey.pid]);
+        if (!ImPlot::BeginPlot(plotName.c_str())) {
+          break;
         }
+        const int axisXMin = 10;
+        ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
+
+        int axisFlags = ImPlotAxisFlags_NoLabel;
+        axisFlags |= ImPlotAxisFlags_AutoFit;
+
+        ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
+        if (!threadInfoTable.empty()) {
+          for (auto& item : threadInfoTable) {
+            const static ThreadInfosType* threadInfos;
+            threadInfos = &(item.cpuInfos);
+
+            auto labelName = std::string("tid: ") + std::to_string(threadInfos->front()->id) + " name: " + threadInfos->front()->name;
+            ImPlot::PlotLineG(
+                labelName.c_str(),
+                (ImPlotGetter)[](int idx, void* user_data) {
+                  auto& info = (*threadInfos)[idx];
+                  return ImPlotPoint{calcTimestampsFromStart(info->timestamps), info->usage};
+                },
+                nullptr, (int)threadInfos->size());
+          }
+        }
+        ImPlot::EndPlot();
       }
-      ImPlot::EndPlot();
+
+      // plot mem info
+      if (ui::flag::showMem) {
+        const static decltype(msgPid.second.memInfos)* memInfos;
+        memInfos = &(msgPid.second.memInfos);
+
+        auto plotName = "pid: " + std::to_string(progressKey.pid) + " name: " + progressKey.name + " Memory/MB";
+        if (!ImPlot::BeginPlot(plotName.c_str())) {
+          break;
+        }
+
+        const int axisXMin = 10;
+        ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
+
+        int axisFlags = ImPlotAxisFlags_NoLabel;
+        axisFlags |= ImPlotAxisFlags_AutoFit;
+
+        ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
+
+        ImPlot::PlotLineG(
+            "VmHWM",
+            (ImPlotGetter)[](int idx, void* user_data) {
+              auto& info = (*memInfos)[idx];
+              return ImPlotPoint{calcTimestampsFromStart(info->timestamps), (float)info->hwm / 1024};
+            },
+            nullptr, (int)memInfos->size());
+        ImPlot::PlotLineG(
+            "VmRSS",
+            (ImPlotGetter)[](int idx, void* user_data) {
+              auto& info = (*memInfos)[idx];
+              return ImPlotPoint{calcTimestampsFromStart(info->timestamps), (float)info->rss / 1024};
+            },
+            nullptr, (int)memInfos->size());
+        ImPlot::EndPlot();
+      }
     }
   }
 

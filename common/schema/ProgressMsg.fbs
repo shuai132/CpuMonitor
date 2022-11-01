@@ -7,10 +7,19 @@ table ThreadInfo {
   timestamps: uint64;
 }
 
+table MemInfo {
+  peak: uint64;
+  size: uint64;
+  hwm: uint64;
+  rss: uint64;
+  timestamps: uint64;
+}
+
 table ProgressInfo {
   id: uint64;
   name: string;
-  infos: [ThreadInfo];
+  thread_infos: [ThreadInfo];
+  mem_info: MemInfo;
 }
 
 table ProgressMsg {

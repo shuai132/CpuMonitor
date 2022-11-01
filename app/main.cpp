@@ -7,6 +7,7 @@
 #include "Common.h"
 #include "CpuMonitorAll.h"
 #include "CpuMsg_generated.h"
+#include "MemMonitor.h"
 #include "ProgressMsg_generated.h"
 #include "RpcMsg.h"
 #include "TaskMonitor.h"
@@ -43,6 +44,11 @@ static const auto s_total_time_impl = [] {
 };
 
 using MonitorTasks = std::vector<std::unique_ptr<TaskMonitor>>;
+
+struct ProgressValue {
+  MonitorTasks tasks;
+  MemMonitor::Usage memUsage;
+};
 struct ProgressKey {
   PID_t pid;
   std::string name;
@@ -51,7 +57,7 @@ struct ProgressKey {
     return a.pid < b.pid;
   }
 };
-using MonitorPids = std::map<ProgressKey, MonitorTasks>;
+using MonitorPids = std::map<ProgressKey, ProgressValue>;
 static MonitorPids s_monitor_pids;
 
 static bool addMonitorPid(PID_t pid);
@@ -153,6 +159,7 @@ static void sendNowCpuInfos() {
       auto info = std::make_unique<msg::CpuInfoT>();
       info->name = s_monitor_cpu->ave->stat().name;
       info->usage = s_monitor_cpu->ave->usage;
+      info->timestamps = timestampsNow;
       msg->ave = std::move(info);
     }
     // cores
@@ -160,6 +167,7 @@ static void sendNowCpuInfos() {
       auto info = std::make_unique<msg::CpuInfoT>();
       info->name = core->stat().name;
       info->usage = core->usage;
+      info->timestamps = timestampsNow;
       msg->cores.push_back(std::move(info));
     }
     msg->timestamps = timestampsNow;
@@ -171,17 +179,31 @@ static void sendNowCpuInfos() {
     RpcMsg<msg::ProgressMsgT> msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
-      auto& tasks = monitorPid.second;
+      auto& tasks = monitorPid.second.tasks;
+      auto& memUsage = monitorPid.second.memUsage;
 
       auto progressInfo = std::make_unique<msg::ProgressInfoT>();
       progressInfo->id = id.pid;
       progressInfo->name = id.name;
+
+      // mem info
+      {
+        auto mem = std::make_unique<msg::MemInfoT>();
+        mem->peak = memUsage.VmPeak;
+        mem->size = memUsage.VmSize;
+        mem->hwm = memUsage.VmHWM;
+        mem->rss = memUsage.VmRSS;
+        mem->timestamps = timestampsNow;
+        progressInfo->mem_info = std::move(mem);
+      }
+
       for (const auto& task : tasks) {
         auto taskInfo = std::make_unique<msg::ThreadInfoT>();
         taskInfo->id = task->stat().id;
         taskInfo->name = task->stat().name;
         taskInfo->usage = task->usage;
-        progressInfo->infos.push_back(std::move(taskInfo));
+        taskInfo->timestamps = timestampsNow;
+        progressInfo->thread_infos.push_back(std::move(taskInfo));
       }
       msg->infos.push_back(std::move(progressInfo));
     }
@@ -221,9 +243,20 @@ static void updateCpu() {
 }
 
 static void updateProgress() {
-  for (auto& monitorPid : s_monitor_pids) {
-    auto& tasks = monitorPid.second;
+  for (auto& item : s_monitor_pids) {
+    auto& tasks = item.second.tasks;
+    auto& memUsage = item.second.memUsage;
+    auto memUsageRet = MemMonitor::getUsage(item.first.pid);
+    if (!memUsageRet.ok) {
+      printf("progress exit: name: %-15s, id: %-7" PRIu32 "\n", item.first.name.c_str(), item.first.pid);
+      continue;
+    }
 
+    memUsage = memUsageRet.usage;
+    printf("VmPeak: %8zu kB\n", memUsage.VmPeak);
+    printf("VmSize: %8zu kB\n", memUsage.VmSize);
+    printf("VmHWM:  %8zu kB\n", memUsage.VmHWM);
+    printf("VmRSS:  %8zu kB\n", memUsage.VmRSS);
     for (auto& task : tasks) {
       bool ok = task->update();
       if (ok) {
@@ -240,7 +273,7 @@ static bool updateProgressChange() {
   for (auto& monitorPid : s_monitor_pids) {
     auto& id = monitorPid.first;
     auto pid = id.pid;
-    auto& tasks = monitorPid.second;
+    auto& tasks = monitorPid.second.tasks;
 
     const auto& taskRet = Utils::getTasksOfPid(pid);
     if (!taskRet.ok) {
@@ -292,7 +325,7 @@ static bool addMonitorPid(PID_t pid) {
   // add threads
   for (auto tid : ret.ids) {
     LOGI("thread id: %d", tid);
-    monitorTask.push_back(std::make_unique<TaskMonitor>(pid, tid, s_total_time_impl));
+    monitorTask.tasks.push_back(std::make_unique<TaskMonitor>(pid, tid, s_total_time_impl));
   }
 
   return true;
