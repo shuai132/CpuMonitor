@@ -167,10 +167,10 @@ static void connectServer() {
   if (ui::flag::useADB) {
     auto ret = system("adb forward tcp:8088 tcp:8088");
     (void)ret;
-    client->open("localhost", ui::flag::serverPort);
+    client->open("localhost", std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open usb: localhost:%s", ui::flag::serverPort.c_str());
   } else {
-    client->open(ui::flag::serverAddr, ui::flag::serverPort);
+    client->open(ui::flag::serverAddr, std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open tcp: %s:%s", ui::flag::serverAddr.c_str(), ui::flag::serverPort.c_str());
   }
 }
