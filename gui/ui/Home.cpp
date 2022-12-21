@@ -340,11 +340,11 @@ void Home::onDraw() {
   ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
   // ave
-  if (ui::flag::showCpuAve && ImPlot::BeginPlot("Cpu Ave Usages (%/sec)")) {
+  if (ui::flag::showCpuAve && ImPlot::BeginPlot("CPU Ave Usages (%/sec)")) {
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
 
-    ImPlot::SetupAxes("Time(sec)", "Usages(%)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_Lock);
+    ImPlot::SetupAxes("Time(sec)", "CPU(%)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_Lock);
     ImPlot::SetupLegend(ImPlotLocation_NorthWest);
     if (!s_msg_cpus.empty()) {
       ImPlot::PlotLineG(
@@ -383,7 +383,7 @@ void Home::onDraw() {
     const int axisXMin = 10;
     ImPlot::SetupAxesLimits(0, axisXMin, 0, 100);
 
-    ImPlot::SetupAxes("Time(sec)", "Usages(%)", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoLabel, ImPlotAxisFlags_Lock);
+    ImPlot::SetupAxes("Time(sec)", "CPU(%)", ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_NoLabel, ImPlotAxisFlags_Lock);
     if (!s_msg_cpus.empty()) {
       const uint32_t cpuCores = s_msg_cpus.front().cores.size();
       ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
@@ -421,7 +421,7 @@ void Home::onDraw() {
         int axisFlags = ImPlotAxisFlags_NoLabel;
         axisFlags |= ImPlotAxisFlags_AutoFit;
 
-        ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
+        ImPlot::SetupAxes("Time(sec)", "CPU(%)", axisFlags, ImPlotAxisFlags_AutoFit);
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
         if (!threadInfoTable.empty()) {
           for (auto& item : threadInfoTable) {
@@ -457,7 +457,7 @@ void Home::onDraw() {
         int axisFlags = ImPlotAxisFlags_NoLabel;
         axisFlags |= ImPlotAxisFlags_AutoFit;
 
-        ImPlot::SetupAxes("Time(sec)", "Usages(%)", axisFlags, ImPlotAxisFlags_AutoFit);
+        ImPlot::SetupAxes("Time(sec)", "Memory(MB)", axisFlags, ImPlotAxisFlags_AutoFit);
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
 
         ImPlot::PlotLineG(
