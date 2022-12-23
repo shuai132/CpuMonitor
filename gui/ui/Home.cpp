@@ -10,6 +10,7 @@
 #include "RpcMsg.h"
 #include "Types.h"
 #include "defer.h"
+#include "Shell.hpp"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
@@ -165,8 +166,7 @@ static void connectServer() {
     startAutoConnect();
   };
   if (ui::flag::useADB) {
-    auto ret = system("adb forward tcp:8088 tcp:8088");
-    (void)ret;
+    Shell::exec("adb forward tcp:8088 tcp:8088");
     client->open("localhost", std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open usb: localhost:%s", ui::flag::serverPort.c_str());
   } else {
