@@ -1,5 +1,7 @@
 #include "CpuMonitorAll.h"
 
+#include <stdexcept>
+
 #include "CpuMonitor.h"
 #include "detail/defer.h"
 #include "detail/log.h"
