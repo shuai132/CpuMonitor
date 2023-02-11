@@ -28,6 +28,8 @@ struct Result {
 };
 
 Result exec(const std::string &command) {
+  static std::mutex mutex;
+
   std::array<char, 8192> buffer{};
   std::string result;
 #ifdef _WIN32
@@ -47,7 +49,10 @@ Result exec(const std::string &command) {
   };
 #endif
 
+  mutex.lock();
   FILE *pipe = popen(command.c_str(), "r");
+  mutex.unlock();
+
   if (pipe == nullptr) {
     return {-1, "popen() open failed!"};
   }

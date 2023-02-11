@@ -8,9 +8,9 @@
 #include "CpuMsg_generated.h"
 #include "ProgressMsg_generated.h"
 #include "RpcMsg.h"
+#include "Shell.hpp"
 #include "Types.h"
 #include "defer.h"
-#include "Shell.hpp"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
@@ -149,7 +149,6 @@ static void initRpcTask() {
 static void startAutoConnect();
 
 static void connectServer() {
-  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
   auto& client = s_rpc_client;
   client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
     LOGI("on_open");
@@ -503,7 +502,9 @@ void Home::initGUI() {
 Home::Home() {
   initGUI();
 
+  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
   s_timer_connect = std::make_unique<asio::steady_timer>(App::instance()->context());
+
   startAutoConnect();
 }
 
