@@ -37,7 +37,7 @@ static std::unique_ptr<asio_net::rpc_server> s_rpc_server;
 static std::shared_ptr<RpcCore::Rpc> s_rpc;
 
 // cpu monitor
-static std::unique_ptr<CpuMonitor> s_monitor_cpu;
+static std::unique_ptr<CpuMonitor> s_monitor_cpu = std::make_unique<CpuMonitor>();
 static const auto s_total_time_impl = [] {
   return s_monitor_cpu->ave->totalTime / s_monitor_cpu->cores.size();
 };
@@ -368,11 +368,8 @@ static void asyncNextUpdate() {
 }
 
 static void initApp() {
-  s_monitor_cpu = std::make_unique<CpuMonitor>();
-
   s_context = std::make_unique<asio::io_context>();
   s_timer_update = std::make_unique<asio::steady_timer>(*s_context);
-
   asyncNextUpdate();
 }
 
@@ -397,6 +394,8 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  s_monitor_cpu = std::make_unique<CpuMonitor>();
+
   int ret;
   while ((ret = getopt(argc, argv, "h::d:s::p:c::i:n:")) != -1) {
     switch (ret) {
@@ -420,8 +419,8 @@ int main(int argc, char** argv) {
       case 'i': {
         auto& allPids = optarg;
         for (const auto& pidStr : string_utils::Split(allPids, ",", true)) {
-          auto pid = std::stoul(pidStr, nullptr, 10);
-          LOGD("add pid: %lu", pid);
+          auto pid = std::stoi(pidStr, nullptr, 10);
+          LOGD("add pid: %d", pid);
           addMonitorPid(pid);
         }
       } break;

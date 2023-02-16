@@ -3,68 +3,24 @@
 #include <fstream>
 #include <iostream>
 
-#include "Utils.h"
+#include "TaskStat.h"
 
 #define READ_PROP(name) file >> stat.name
-#define DUMP_PROP(name) #name ": " << stat.name << "\n"
 
 namespace cpu_monitor {
 
-using TaskStat = detail::TaskStat;
-
-TaskMonitor::TaskMonitor(TaskId_t tid, TaskMonitor::TotalTimeImpl totalTimeImpl) : id(tid), totalTimeImpl_(std::move(totalTimeImpl)) {
-  updateStat();
+TaskMonitor::TaskMonitor(TaskId_t tid, TaskMonitor::TotalTimeImpl cpuTicksImpl) : id(tid), totalTimeImpl_(std::move(cpuTicksImpl)) {
+  update();
 }
 
 bool TaskMonitor::update() {
-  invertAB();
-  bool ret = updateStat();
-  if (!ret) {
-    return false;
-  }
-  calcUsage();
-  return true;
-}
-
-void TaskMonitor::dump() {
-  auto &stat = taskStatCurr();
-  // clang-format off
-  std::cout << ">> TaskMonitor dump: \n"
-            << DUMP_PROP(id)
-            << DUMP_PROP(name)
-            << DUMP_PROP(task_state)
-            << DUMP_PROP(utime)
-            << DUMP_PROP(stime)
-            << DUMP_PROP(cutime)
-            << DUMP_PROP(cstime)
-            << DUMP_PROP(num_threads)
-            << DUMP_PROP(rss)
-            << DUMP_PROP(task_cpu)
-            << DUMP_PROP(task_policy)
-            << "usage: " << usage << "%" << std::endl;
-  // clang-format on
-}
-
-void TaskMonitor::invertAB() {
-  currentA_ = !currentA_;
-}
-
-TaskStat &TaskMonitor::taskStatCurr() {
-  return currentA_ ? cpuTickA_ : cpuTickB_;
-}
-
-TaskStat &TaskMonitor::taskStatPre() {
-  return !currentA_ ? cpuTickA_ : cpuTickB_;
-}
-
-bool TaskMonitor::updateStat() {
   std::string path = "/proc/" + std::to_string(id) + "/task/" + std::to_string(id) + "/stat";
   std::fstream file(path, std::fstream::in);
   if (!file.is_open()) {
     return false;
   }
 
-  auto &stat = taskStatCurr();
+  detail::TaskStat stat;
   READ_PROP(id);
   READ_PROP(name);
   READ_PROP(task_state);
@@ -107,18 +63,28 @@ bool TaskMonitor::updateStat() {
   READ_PROP(task_rt_priority);
   READ_PROP(task_policy);
 
-  {
-    // linux thread name like: (cpu_monitor)
-    // remove the `()`
-    name = stat.name.substr(1, stat.name.size() - 2);
-  }
+  // linux thread name like: (cpu_monitor)
+  // remove the `()`
+  name = stat.name.substr(1, stat.name.size() - 2);
+
+  // skip calculate usage
+  if (!totalTimeImpl_) return false;
+
+  auto totalThreadTicksNow = stat.calcTicksTotal();
+  auto deltaThread = totalThreadTicksNow - totalThreadTime_;
+  usage = deltaThread * 100.f / totalTimeImpl_();  // NOLINT
+
+  totalThreadTime_ = totalThreadTicksNow;
   return true;
 }
 
-void TaskMonitor::calcUsage() {
-  totalThreadTime = taskStatCurr().calcTicksTotal() - taskStatPre().calcTicksTotal();
-  totalCpuTime = totalTimeImpl_();
-  usage = totalThreadTime * 100.f / totalCpuTime;  // NOLINT
+void TaskMonitor::dump() const {
+  // clang-format off
+  std::cout << ">> TaskMonitor dump: \n"
+            << "name: "<< name << "\n"
+            << "id: "<< id << "\n"
+            << "usage: " << usage << "%" << std::endl;
+  // clang-format on
 }
 
 }  // namespace cpu_monitor

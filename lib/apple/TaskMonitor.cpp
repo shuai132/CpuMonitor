@@ -13,7 +13,9 @@
 
 namespace cpu_monitor {
 
-TaskMonitor::TaskMonitor(TaskId_t tid, TaskMonitor::TotalTimeImpl totalTimeImpl) : id(tid), totalTimeImpl_(std::move(totalTimeImpl)) {}
+TaskMonitor::TaskMonitor(TaskId_t tid, TaskMonitor::TotalTimeImpl cpuTicksImpl) : id(tid), totalTimeImpl_(std::move(cpuTicksImpl)) {
+  (void)totalThreadTime_;
+}
 
 bool TaskMonitor::update() {
   mach_msg_type_number_t count = THREAD_INFO_MAX;
@@ -38,7 +40,7 @@ bool TaskMonitor::update() {
   return true;
 }
 
-void TaskMonitor::dump() {
+void TaskMonitor::dump() const {
   // clang-format off
   std::cout << ">> TaskMonitor dump: \n"
             << "name: "<< name << "\n"
