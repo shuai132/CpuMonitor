@@ -26,7 +26,7 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=Release .. -G "MinGW Makefiles"
           mingw32-make CpuMonitor -j2
-          mv gui/${{ env.targetName }}.exe ${{ env.targetName }}.exe
+          mv ui/${{ env.targetName }}.exe ${{ env.targetName }}.exe
           Compress-Archive -Path ${{ env.targetName }}.exe ${{ env.targetName }}.zip
 
       - name: Archive production artifacts

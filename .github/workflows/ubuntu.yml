@@ -29,7 +29,7 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make ${{ env.targetName }} -j2
-          mv gui/${{ env.targetName }} ${{ env.targetName }}
+          mv ui/${{ env.targetName }} ${{ env.targetName }}
           zip -r ${{ env.targetName }}.zip ${{ env.targetName }}
 
       - name: Archive production artifacts

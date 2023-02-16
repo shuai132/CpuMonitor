@@ -1,6 +1,8 @@
 # CpuMonitor
 
-## GUI
+there are two executable file, UI(`CpuMonitor`) and Daemon(`cpu_monitor`).
+
+## UI
 
 ### Install Dependencies for Build
 
@@ -19,20 +21,26 @@ sudo apt install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev
 ### Build
 
 ```shell
-mkdir build && cd build && cmake .. && make CpuMonitor
+mkdir build && cd build && cmake .. && make -j8
 ```
 
-## Monitor
+## Daemon
 
 ### Build
 
 ```shell
-mkdir build && cd build && cmake -DBUILD_GUI=OFF .. && make cpu_monitor
+mkdir build && cd build && cmake .. && make cpu_monitor
 ```
 
 ## Usage
 
-* run cpu_monitor as server
+* show help
+
+```shell
+./cpu_monitor -h
+```
+
+* run cpu_monitor as daemon(server)
 
 ```shell
 ./cpu_monitor -s

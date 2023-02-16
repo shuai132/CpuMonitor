@@ -24,7 +24,7 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make ${{ env.targetName }} -j2
-          mv gui/${{ env.targetName }}.app ${{ env.targetName }}.app
+          mv ui/${{ env.targetName }}.app ${{ env.targetName }}.app
           zip -r ${{ env.targetName }}.zip ${{ env.targetName }}.app
 
       - name: Archive production artifacts
