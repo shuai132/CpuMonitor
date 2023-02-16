@@ -1,6 +1,6 @@
 # CpuMonitor
 
-there are two executable file, UI(`CpuMonitor`) and Daemon(`cpu_monitor`).
+There are two executable file: UI(`CpuMonitor`) and Daemon(`cpu_monitor`).
 
 ## UI
 
@@ -18,18 +18,20 @@ sudo apt install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev
 * Windows(MinGW)  
   Nothing todo
 
-### Build
+### Build and Run
 
 ```shell
-mkdir build && cd build && cmake .. && make -j8
+mkdir build && cd build && cmake .. && make -j8 CpuMonitor
+./CpuMonitor
 ```
 
 ## Daemon
 
-### Build
+### Build and Run
 
 ```shell
-mkdir build && cd build && cmake .. && make cpu_monitor
+mkdir build && cd build && cmake .. && make -j8 cpu_monitor
+./cpu_monitor -h
 ```
 
 ## Usage
