@@ -16,14 +16,14 @@ namespace cpu_monitor {
 
 CpuMonitor::CpuMonitor() {
   ave = std::make_unique<CpuMonitorCore>();
-  ave->name = "ave";
+  ave->name = "cpu";
 
   auto cpuNum = std::thread::hardware_concurrency();
 
   cpu_monitor_LOGI("cpu core: %d", cpuNum);
   for (int i = 0; i < cpuNum; i++) {
     auto monitor = std::make_unique<CpuMonitorCore>();
-    monitor->name = "core" + std::to_string(i);
+    monitor->name = "cpu" + std::to_string(i);
     cores.push_back(std::move(monitor));
   }
   update();
