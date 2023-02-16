@@ -1,7 +1,6 @@
 #include "TaskMonitor.h"
 
 #include <mach/mach_error.h>
-#include <mach/semaphore.h>
 #include <mach/thread_act.h>
 #include <mach/thread_info.h>
 #include <sys/types.h>
@@ -21,7 +20,7 @@ bool TaskMonitor::update() {
   mach_msg_type_number_t count = THREAD_INFO_MAX;
   thread_basic_info_data_t info;
   thread_act_t thread = id;
-  auto kr = ::thread_info(thread, THREAD_BASIC_INFO, (thread_info_t)&info, &count);
+  auto kr = thread_info(thread, THREAD_BASIC_INFO, (thread_info_t)&info, &count);
   if (kr == KERN_SUCCESS) {
     double cpu = info.cpu_usage;
     pthread_t pt = pthread_from_mach_thread_np(thread);

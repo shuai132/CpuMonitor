@@ -20,6 +20,9 @@ TasksRet getTasksOfPid(PID_t pid) {
     ret.ok = false;
     return ret;
   }
+  defer {
+    mach_port_deallocate(mach_task_self(), task);
+  };
 
   thread_act_array_t threads;
   mach_msg_type_number_t thread_count = 0;
@@ -28,6 +31,9 @@ TasksRet getTasksOfPid(PID_t pid) {
     ret.ok = false;
     return ret;
   }
+  defer {
+    vm_deallocate(task, (vm_address_t)threads, sizeof(thread_act_t) * thread_count);
+  };
 
   char name[1024];
   proc_name((int)pid, name, sizeof(name));

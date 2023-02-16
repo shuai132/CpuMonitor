@@ -2,9 +2,8 @@
 
 #include <mach/mach_error.h>
 #include <mach/mach_host.h>
-#include <mach/mach_init.h>
 #include <mach/processor_info.h>
-#include <mach/semaphore.h>
+#include <mach/vm_map.h>
 
 #include <stdexcept>
 #include <thread>
@@ -49,9 +48,14 @@ void CpuMonitor::update(bool updateCores) {
     auto kr = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &cpuNum, &cpuInfo, &cpuInfoNum);
     if (kr != KERN_SUCCESS) throw std::runtime_error("host_processor_info failed");
 
+    defer {
+      vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(cpuInfo), cpuNum * sizeof(processor_cpu_load_info));
+    };
+
+    auto cpuInfoTmp = cpuInfo;
     for (const auto &item : cores) {
-      item->update((CpuInfoNative *)cpuInfo);
-      cpuInfo += CPU_STATE_MAX;
+      item->update((CpuInfoNative *)cpuInfoTmp);
+      cpuInfoTmp += CPU_STATE_MAX;
     }
   }
 }
