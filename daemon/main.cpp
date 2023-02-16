@@ -22,6 +22,8 @@ using namespace cpu_monitor;
 // all argv
 struct {
   bool h = false;
+  std::string all_names;
+  std::string all_pids;
   uint32_t d_update_interval_ms = 1000;
   bool s_run_server = false;
   uint32_t s_server_port = 8088;
@@ -37,7 +39,7 @@ static std::unique_ptr<asio_net::rpc_server> s_rpc_server;
 static std::shared_ptr<RpcCore::Rpc> s_rpc;
 
 // cpu monitor
-static std::unique_ptr<CpuMonitor> s_monitor_cpu = std::make_unique<CpuMonitor>();
+static std::unique_ptr<CpuMonitor> s_monitor_cpu;
 static const auto s_total_time_impl = [] {
   return s_monitor_cpu->ave->totalTime / s_monitor_cpu->cores.size();
 };
@@ -394,8 +396,6 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  s_monitor_cpu = std::make_unique<CpuMonitor>();
-
   int ret;
   while ((ret = getopt(argc, argv, "h::d:s::p:c::i:n:")) != -1) {
     switch (ret) {
@@ -417,19 +417,10 @@ int main(int argc, char** argv) {
         s_argv.c_only_monitor_cpu = true;
       } break;
       case 'i': {
-        auto& allPids = optarg;
-        for (const auto& pidStr : string_utils::Split(allPids, ",", true)) {
-          auto pid = std::stoi(pidStr, nullptr, 10);
-          LOGD("add pid: %d", pid);
-          addMonitorPid(pid);
-        }
+        s_argv.all_pids = optarg;
       } break;
       case 'n': {
-        auto& allNames = optarg;
-        for (const auto& name : string_utils::Split(allNames, ",", true)) {
-          LOGD("add name: %s", name.c_str());
-          addMonitorPidByName(name);
-        }
+        s_argv.all_names = optarg;
       } break;
       default: {
         s_argv.h = true;
@@ -440,6 +431,23 @@ int main(int argc, char** argv) {
   if (s_argv.h) {
     showHelp();
     return 0;
+  }
+
+  s_monitor_cpu = std::make_unique<CpuMonitor>();
+
+  if (!s_argv.all_pids.empty()) {
+    for (const auto& pidStr : string_utils::Split(s_argv.all_pids, ",", true)) {
+      auto pid = std::stoi(pidStr, nullptr, 10);
+      LOGD("add pid: %d", pid);
+      addMonitorPid(pid);
+    }
+  }
+
+  if (!s_argv.all_names.empty()) {
+    for (const auto& name : string_utils::Split(s_argv.all_names, ",", true)) {
+      LOGD("add name: %s", name.c_str());
+      addMonitorPidByName(name);
+    }
   }
 
   if (s_argv.c_only_monitor_cpu) {
