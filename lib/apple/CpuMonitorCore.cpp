@@ -8,18 +8,6 @@ namespace cpu_monitor {
 
 CpuMonitorCore::CpuMonitorCore() = default;
 
-void CpuMonitorCore::invertAB() {
-  currentA_ = !currentA_;
-}
-
-CpuTick &CpuMonitorCore::tickCur() {
-  return currentA_ ? cpuTickA_ : cpuTickB_;
-}
-
-CpuTick &CpuMonitorCore::tickPre() {
-  return !currentA_ ? cpuTickA_ : cpuTickB_;
-}
-
 void CpuMonitorCore::update(CpuInfoNative *p) {
   invertAB();
   {
@@ -34,15 +22,27 @@ void CpuMonitorCore::update(CpuInfoNative *p) {
   calcUsage();
 }
 
+void CpuMonitorCore::dump() const {
+  cpu_monitor_LOGI("%s: usage: %.2f%%", name.c_str(), usage);
+}
+
+void CpuMonitorCore::invertAB() {
+  currentA_ = !currentA_;
+}
+
+CpuTick &CpuMonitorCore::tickCur() {
+  return currentA_ ? cpuTickA_ : cpuTickB_;
+}
+
+CpuTick &CpuMonitorCore::tickPre() {
+  return !currentA_ ? cpuTickA_ : cpuTickB_;
+}
+
 void CpuMonitorCore::calcUsage() {
   totalTime = tickCur().totalTicks - tickPre().totalTicks;
   idleTime = tickCur().idleTicks - tickPre().idleTicks;
   uint64_t active = totalTime - idleTime;
   usage = active * 100.f / totalTime;  // NOLINT
-}
-
-void CpuMonitorCore::dump() const {
-  cpu_monitor_LOGI("%s: usage: %.2f%%", name.c_str(), usage);
 }
 
 }  // namespace cpu_monitor

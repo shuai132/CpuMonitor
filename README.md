@@ -7,16 +7,16 @@ There are two executable file: UI(`CpuMonitor`) and Daemon(`cpu_monitor`).
 ### Install Dependencies for Build
 
 * Ubuntu
-
-```shell
-sudo apt install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
-```
+  ```shell
+  sudo apt install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+  ```
 
 * macOS  
-  Nothing todo
+  `nothing todo`
+
 
 * Windows(MinGW)  
-  Nothing todo
+  `nothing todo`
 
 ### Build and Run
 

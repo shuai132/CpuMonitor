@@ -15,14 +15,15 @@ class CpuMonitorCore : detail::noncopyable {
   explicit CpuMonitorCore();
 
  public:
+  void update(CpuInfoNative *p);
+  void dump() const;
+
+ public:
   std::string name;
   float usage{};
 
   uint64_t idleTime{};
   uint64_t totalTime{};
-
-  void update(CpuInfoNative *p);
-  void dump() const;
 
  private:
   void invertAB();
