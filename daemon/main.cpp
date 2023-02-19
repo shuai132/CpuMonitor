@@ -357,9 +357,9 @@ static void asyncNextUpdate() {
 }
 
 [[noreturn]] static void monitorCpu() {
-  CpuMonitor cpu;
+  auto& cpu = *s_monitor_cpu;
   for (;;) {
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(s_argv.d_update_interval_ms));
     cpu.update();
     printf("%s usage: %.2f%%\n", cpu.ave->name.c_str(), cpu.ave->usage);
     for (auto& item : cpu.cores) {
