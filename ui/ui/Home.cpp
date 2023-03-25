@@ -224,7 +224,7 @@ void Home::onDraw() {
     // NAME
     {
       ImGui::SameLine();
-      static std::string name = "miniapp";
+      static std::string name = "cpu_monitor";
       name.resize(32);
       ImGui::PushItemWidth(120);
       ImGui::Text("Name:");

@@ -7,7 +7,7 @@
 #endif
 
 #ifdef __APPLE__
-#include <mach/arm/vm_types.h>
+#include <mach/mach_types.h>
 #endif
 
 namespace cpu_monitor {

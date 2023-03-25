@@ -24,6 +24,8 @@ mkdir build && cd build && cmake .. && make -j8 cpu_monitor
 
 ### Usage
 
+Notice: `macOS` need root permission
+
 * show help
 
 ```shell

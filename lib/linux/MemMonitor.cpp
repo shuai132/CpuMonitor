@@ -1,6 +1,7 @@
 #include "MemMonitor.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include "detail/defer.h"

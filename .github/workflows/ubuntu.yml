@@ -27,9 +27,9 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make CpuMonitor cpu_monitor -j2
-          mv ui/CpuMonitor.app CpuMonitor.app
+          mv ui/CpuMonitor CpuMonitor
           mv daemon/cpu_monitor cpu_monitor
-          zip -r CpuMonitor.zip CpuMonitor.app
+          zip -r CpuMonitor.zip CpuMonitor
           zip -r cpu_monitor.zip cpu_monitor
 
       - name: Archive UI

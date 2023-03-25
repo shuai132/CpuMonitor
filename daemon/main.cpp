@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <thread>
 
 #include "Common.h"
 #include "CpuMonitor.h"
