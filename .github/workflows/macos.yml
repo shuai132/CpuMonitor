@@ -11,8 +11,6 @@ on:
 jobs:
   macOS:
     runs-on: macOS-latest
-    env:
-      targetName: CpuMonitor
 
     steps:
       - uses: actions/checkout@v3
@@ -23,22 +21,40 @@ jobs:
         run: |
           mkdir build && cd build
           cmake -DCMAKE_BUILD_TYPE=Release ..
-          make ${{ env.targetName }} -j2
-          mv ui/${{ env.targetName }}.app ${{ env.targetName }}.app
-          zip -r ${{ env.targetName }}.zip ${{ env.targetName }}.app
+          make CpuMonitor cpu_monitor -j2
+          mv ui/CpuMonitor.app CpuMonitor.app
+          mv daemon/cpu_monitor cpu_monitor
+          zip -r CpuMonitor.zip CpuMonitor.app
+          zip -r cpu_monitor.zip cpu_monitor
 
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v1
+      - name: Archive UI
+        uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.targetName }}_${{ runner.os }}_${{ github.sha }}
-          path: build/${{ env.targetName }}.zip
+          name: CpuMonitor_${{ runner.os }}_${{ github.sha }}
+          path: build/CpuMonitor.zip
 
-      - name: Make Release
+      - name: Archive Daemon
+        uses: actions/upload-artifact@v3
+        with:
+          name: cpu_monitor_${{ runner.os }}_${{ github.sha }}
+          path: build/cpu_monitor.zip
+
+      - name: Release UI
         if: startsWith(github.event.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v1-release
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/${{ env.targetName }}.zip
-          asset_name: ${{ env.targetName }}_${{ runner.os }}.zip
+          file: build/CpuMonitor.zip
+          asset_name: CpuMonitor_${{ runner.os }}.zip
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Release Daemon
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/cpu_monitor.zip
+          asset_name: cpu_monitor_${{ runner.os }}.zip
           tag: ${{ github.ref }}
           overwrite: true
