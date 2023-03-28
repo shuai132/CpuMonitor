@@ -8,7 +8,7 @@
 #include "CpuMonitor.h"
 #include "CpuMsg_generated.h"
 #include "MemMonitor.h"
-#include "ProgressMsg_generated.h"
+#include "ProcessMsg_generated.h"
 #include "RpcMsg.h"
 #include "TaskMonitor.h"
 #include "Utils.h"
@@ -47,19 +47,19 @@ static const auto s_total_time_impl = [] {
 
 using MonitorTasks = std::vector<std::unique_ptr<TaskMonitor>>;
 
-struct ProgressValue {
+struct ProcessValue {
   MonitorTasks tasks;
-  MemMonitor::Usage memUsage;
+  MemMonitor::Usage memUsage{};
 };
-struct ProgressKey {
+struct ProcessKey {
   PID_t pid;
   std::string name;
 
-  friend inline bool operator<(const ProgressKey& a, const ProgressKey& b) {
+  friend inline bool operator<(const ProcessKey& a, const ProcessKey& b) {
     return a.pid < b.pid;
   }
 };
-using MonitorPids = std::map<ProgressKey, ProgressValue>;
+using MonitorPids = std::map<ProcessKey, ProcessValue>;
 static MonitorPids s_monitor_pids;
 
 static bool addMonitorPid(PID_t pid);
@@ -129,13 +129,13 @@ static void initRpcTask() {
   });
 
   s_rpc->subscribe("get_added_pids", [] {
-    RpcMsg<msg::ProgressMsgT> msg;
+    RpcMsg<msg::ProcessMsgT> msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
-      auto progressInfo = std::make_unique<msg::ProgressInfoT>();
-      progressInfo->id = id.pid;
-      progressInfo->name = id.name;
-      msg->infos.push_back(std::move(progressInfo));
+      auto processInfo = std::make_unique<msg::ProcessInfoT>();
+      processInfo->id = id.pid;
+      processInfo->name = id.name;
+      msg->infos.push_back(std::move(processInfo));
     }
     return msg;
   });
@@ -176,17 +176,17 @@ static void sendNowCpuInfos() {
     s_rpc->cmd("on_cpu_msg")->msg(msg)->call();
   }
 
-  // progress info
+  // process info
   {
-    RpcMsg<msg::ProgressMsgT> msg;
+    RpcMsg<msg::ProcessMsgT> msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
       auto& tasks = monitorPid.second.tasks;
       auto& memUsage = monitorPid.second.memUsage;
 
-      auto progressInfo = std::make_unique<msg::ProgressInfoT>();
-      progressInfo->id = id.pid;
-      progressInfo->name = id.name;
+      auto processInfo = std::make_unique<msg::ProcessInfoT>();
+      processInfo->id = id.pid;
+      processInfo->name = id.name;
 
       // mem info
       {
@@ -196,7 +196,7 @@ static void sendNowCpuInfos() {
         mem->hwm = memUsage.VmHWM;
         mem->rss = memUsage.VmRSS;
         mem->timestamps = timestampsNow;
-        progressInfo->mem_info = std::move(mem);
+        processInfo->mem_info = std::move(mem);
       }
 
       for (const auto& task : tasks) {
@@ -205,12 +205,12 @@ static void sendNowCpuInfos() {
         taskInfo->name = task->name;
         taskInfo->usage = task->usage;
         taskInfo->timestamps = timestampsNow;
-        progressInfo->thread_infos.push_back(std::move(taskInfo));
+        processInfo->thread_infos.push_back(std::move(taskInfo));
       }
-      msg->infos.push_back(std::move(progressInfo));
+      msg->infos.push_back(std::move(processInfo));
     }
     msg->timestamps = timestampsNow;
-    s_rpc->cmd("on_progress_msg")->msg(msg)->call();
+    s_rpc->cmd("on_process_msg")->msg(msg)->call();
   }
 }
 
@@ -244,13 +244,13 @@ static void updateCpu() {
   printf("system %s usage: %.2f%%\n", s_monitor_cpu->ave->name.c_str(), s_monitor_cpu->ave->usage);
 }
 
-static void updateProgress() {
+static void updateProcess() {
   for (auto& item : s_monitor_pids) {
     auto& tasks = item.second.tasks;
     auto& memUsage = item.second.memUsage;
     auto memUsageRet = MemMonitor::getUsage(item.first.pid);
     if (!memUsageRet.ok) {
-      printf("progress exit: name: %-15s, id: %-7" PRIu32 "\n", item.first.name.c_str(), item.first.pid);
+      printf("process exit: name: %-15s, id: %-7" PRIu32 "\n", item.first.name.c_str(), item.first.pid);
       continue;
     }
 
@@ -271,7 +271,7 @@ static void updateProgress() {
   }
 }
 
-static bool updateProgressChange() {
+static bool updateProcessChange() {
   for (auto& monitorPid : s_monitor_pids) {
     auto& id = monitorPid.first;
     auto pid = id.pid;
@@ -279,7 +279,7 @@ static bool updateProgressChange() {
 
     const auto& taskRet = Utils::getTasksOfPid(pid);
     if (!taskRet.ok) {
-      printf("progress exit! will wait...\n");
+      printf("process exit! will wait...\n");
       return false;
     }
     const auto& tasksNow = taskRet.ids;
@@ -334,7 +334,7 @@ static bool addMonitorPid(PID_t pid) {
 }
 
 static bool addMonitorPid(const std::string& pid) {
-  PID_t pid_t = strtoul(pid.c_str(), nullptr, 10);
+  auto pid_t = (int)strtol(pid.c_str(), nullptr, 10);
   if (pid_t == 0) {
     return false;
   }
@@ -350,9 +350,9 @@ static void asyncNextUpdate() {
   s_timer_update->expires_after(std::chrono::milliseconds(s_argv.d_update_interval_ms));
   s_timer_update->async_wait([](asio::error_code ec) {
     updateCpu();
-    updateProgress();
+    updateProcess();
     sendNowCpuInfos();
-    updateProgressChange();
+    updateProcessChange();
     asyncNextUpdate();
   });
 }

@@ -41,7 +41,7 @@ TasksRet getTasksOfPid(PID_t pid) {
 }
 
 PID_t getPidByName(const std::string& name) {
-  auto progressName = name.size() > 16 ? name.substr(0, 15) : name;
+  auto processName = name.size() > 16 ? name.substr(0, 15) : name;
 
   DIR* dir = opendir("/proc");
   defer {
@@ -71,8 +71,8 @@ PID_t getPidByName(const std::string& name) {
     file >> tmpName;
     file.close();
 
-    if (tmpName == progressName) {
-      return std::strtoul(pidName, nullptr, 10);
+    if (tmpName == processName) {
+      return (int)std::strtol(pidName, nullptr, 10);
     }
   }
   return 0;

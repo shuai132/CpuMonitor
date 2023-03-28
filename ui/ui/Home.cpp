@@ -6,7 +6,7 @@
 #include "App.h"
 #include "Common.h"
 #include "CpuMsg_generated.h"
-#include "ProgressMsg_generated.h"
+#include "ProcessMsg_generated.h"
 #include "RpcMsg.h"
 #include "Shell.hpp"
 #include "Types.h"
@@ -36,11 +36,11 @@ static std::shared_ptr<RpcCore::Rpc> s_rpc;
 
 static std::vector<msg::CpuMsgT> s_msg_cpus;
 
-struct ProgressKey {
+struct ProcessKey {
   PID_t pid;
   std::string name;
 
-  friend inline bool operator<(const ProgressKey& a, const ProgressKey& b) {
+  friend inline bool operator<(const ProcessKey& a, const ProcessKey& b) {
     return a.pid < b.pid;
   }
 };
@@ -57,7 +57,7 @@ struct ThreadInfoKey {
   }
 };
 
-struct ProgressValue {
+struct ProcessValue {
   struct ThreadInfoItem {
     ThreadInfoKey key;
     ThreadInfosType cpuInfos;
@@ -70,7 +70,7 @@ struct ProgressValue {
   std::vector<std::unique_ptr<msg::MemInfoT>> memInfos;
 };
 
-static std::map<ProgressKey, ProgressValue> s_msg_pids;
+static std::map<ProcessKey, ProcessValue> s_msg_pids;
 static std::map<PID_t, uint32_t> s_pid_current_thread_num;
 
 static std::unique_ptr<asio::steady_timer> s_timer_connect;
@@ -116,9 +116,9 @@ static void initRpcTask() {
     s_msg_cpus.push_back(std::move(msg.msg));
   });
 
-  s_rpc->subscribe("on_progress_msg", [](RpcMsg<msg::ProgressMsgT> msg) {
-    auto& progressMsg = msg.msg;
-    for (auto& pInfo : progressMsg.infos) {
+  s_rpc->subscribe("on_process_msg", [](RpcMsg<msg::ProcessMsgT> msg) {
+    auto& processMsg = msg.msg;
+    for (auto& pInfo : processMsg.infos) {
       auto& processValue = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
       auto& threadInfos = processValue.threadInfos;
       s_pid_current_thread_num[pInfo->id] = pInfo->thread_infos.size();
@@ -134,7 +134,7 @@ static void initRpcTask() {
           ThreadInfoKey key{(TaskId_t)item->id, item->usage};
           ThreadInfosType value;
           value.push_back(std::move(item));
-          threadInfos.push_back(ProgressValue::ThreadInfoItem{key, std::move(value)});
+          threadInfos.push_back(ProcessValue::ThreadInfoItem{key, std::move(value)});
         }
       }
       threadInfos.sort();
@@ -324,7 +324,7 @@ void Home::onDraw() {
   if (ImGui::Button("GetPids")) {
     if (s_rpc) {
       s_rpc->cmd("get_added_pids")
-          ->rsp([](RpcMsg<msg::ProgressMsgT> msg) {
+          ->rsp([](RpcMsg<msg::ProcessMsgT> msg) {
             LOGI("get_added_pids rsp:");
             for (const auto& item : msg->infos) {
               LOGI("pid: %" PRIu64 ", name: %s", item->id, item->name.c_str());
@@ -404,13 +404,13 @@ void Home::onDraw() {
   // pids
   {
     for (const auto& msgPid : s_msg_pids) {
-      auto& progressKey = msgPid.first;
+      auto& processKey = msgPid.first;
       auto& threadInfoTable = msgPid.second.threadInfos;
 
       // plot thread info
       if (ui::flag::showCpu) {
-        auto plotName = "pid: " + std::to_string(progressKey.pid) + " name: " + progressKey.name +
-                        " threads: " + std::to_string(s_pid_current_thread_num[progressKey.pid]);
+        auto plotName = "pid: " + std::to_string(processKey.pid) + " name: " + processKey.name +
+                        " threads: " + std::to_string(s_pid_current_thread_num[processKey.pid]);
         if (!ImPlot::BeginPlot(plotName.c_str())) {
           break;
         }
@@ -445,7 +445,7 @@ void Home::onDraw() {
         const static decltype(msgPid.second.memInfos)* memInfos;
         memInfos = &(msgPid.second.memInfos);
 
-        auto plotName = "pid: " + std::to_string(progressKey.pid) + " name: " + progressKey.name + " Memory/MB";
+        auto plotName = "pid: " + std::to_string(processKey.pid) + " name: " + processKey.name + " Memory/MB";
         if (!ImPlot::BeginPlot(plotName.c_str())) {
           break;
         }

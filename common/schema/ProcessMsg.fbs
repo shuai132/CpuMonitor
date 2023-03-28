@@ -15,16 +15,16 @@ table MemInfo {
   timestamps: uint64;
 }
 
-table ProgressInfo {
+table ProcessInfo {
   id: uint64;
   name: string;
   thread_infos: [ThreadInfo];
   mem_info: MemInfo;
 }
 
-table ProgressMsg {
-  infos: [ProgressInfo];
+table ProcessMsg {
+  infos: [ProcessInfo];
   timestamps: uint64;
 }
 
-root_type ProgressMsg;
+root_type ProcessMsg;
