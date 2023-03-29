@@ -4,12 +4,12 @@
 [![Build Status](https://github.com/shuai132/CpuMonitor/workflows/Ubuntu/badge.svg)](https://github.com/shuai132/CpuMonitor/actions?workflow=Ubuntu)
 [![Build Status](https://github.com/shuai132/CpuMonitor/workflows/Windows/badge.svg)](https://github.com/shuai132/CpuMonitor/actions?workflow=Windows)
 
-The main aims of this project is to monitor the `RAM of the process` and the `CPU usage of each thread` of this
-process, and draw their `curve graphs`.
+The main aims of this project is to monitor `RAM of process` and `CPU usage of each thread`,
+and draw their `curve graphs`.
 
-There are two executable file: UI(`CpuMonitor`) and Daemon(`cpu_monitor`).  
-They work in a C/S mode. The daemon program implements all functions except for drawing the curve graph, making it
-possible to use on restricted platforms.
+There are two executable file: Daemon(`cpu_monitor`) and UI(`CpuMonitor`).  
+They work in a C/S mode. Daemon program implements all functions except for drawing the curve graph, making it
+possible to use on restricted platforms. UI can run on any platform.
 
 ## Daemon
 
@@ -24,19 +24,19 @@ mkdir build && cd build && cmake .. && make -j8 cpu_monitor
 
 ### Usage
 
-Notice: `macOS` need root permission
+Note: `macOS` need root permission
 
 * show help
 
-```shell
-./cpu_monitor -h
-```
+  ```shell
+  ./cpu_monitor -h
+  ```
 
 * run cpu_monitor as daemon(server)
 
-```shell
-./cpu_monitor -s
-```
+  ```shell
+  ./cpu_monitor -s
+  ```
 
 ## UI
 
@@ -62,3 +62,10 @@ support `Linux` and `macOS` and `Windows`
 mkdir build && cd build && cmake .. && make -j8 CpuMonitor
 ./CpuMonitor
 ```
+
+# FAQs
+
+* Connect via USB ADB:
+  ```shell
+  adb forward tcp:8088 tcp:8088
+  ```

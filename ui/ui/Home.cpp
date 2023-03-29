@@ -20,7 +20,7 @@ using namespace cpu_monitor;
 
 namespace ui {
 namespace flag {
-bool useADB = true;
+bool useLocal = true;
 bool showCpuAve = true;
 bool showCpuCores = true;
 bool showCpu = true;
@@ -164,8 +164,7 @@ static void connectServer() {
     LOGW("on_open_failed: %d, %s", ec.value(), ec.message().c_str());
     startAutoConnect();
   };
-  if (ui::flag::useADB) {
-    Shell::exec("adb forward tcp:8088 tcp:8088");
+  if (ui::flag::useLocal) {
     client->open("localhost", std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open usb: localhost:%s", ui::flag::serverPort.c_str());
   } else {
@@ -184,10 +183,10 @@ static void startAutoConnect() {
 }
 
 void Home::onDraw() {
-  ImGui::Checkbox("ADB", &ui::flag::useADB);
+  ImGui::Checkbox("LOCAL", &ui::flag::useLocal);
 
   // server ip
-  if (!ui::flag::useADB) {
+  if (!ui::flag::useLocal) {
     ui::flag::serverAddr.reserve(64);
     ImGui::SameLine();
     ImGui::PushItemWidth(100);
