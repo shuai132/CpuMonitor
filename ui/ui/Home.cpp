@@ -73,8 +73,6 @@ struct ProcessValue {
 static std::map<ProcessKey, ProcessValue> s_msg_pids;
 static std::map<PID_t, uint32_t> s_pid_current_thread_num;
 
-static std::unique_ptr<asio::steady_timer> s_timer_connect;
-
 static bool s_show_testing = false;
 
 static void cleanData() {
@@ -146,8 +144,6 @@ static void initRpcTask() {
   });
 }
 
-static void startAutoConnect();
-
 static void connectServer() {
   auto& client = s_rpc_client;
   client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
@@ -158,12 +154,8 @@ static void connectServer() {
   client->on_close = [] {
     LOGI("on_close");
     s_rpc = nullptr;
-    startAutoConnect();
   };
-  client->on_open_failed = [](const std::error_code& ec) {
-    LOGW("on_open_failed: %d, %s", ec.value(), ec.message().c_str());
-    startAutoConnect();
-  };
+  client->set_reconnect(1000);
   if (ui::flag::useLocal) {
     client->open("localhost", std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open usb: localhost:%s", ui::flag::serverPort.c_str());
@@ -171,15 +163,6 @@ static void connectServer() {
     client->open(ui::flag::serverAddr, std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open tcp: %s:%s", ui::flag::serverAddr.c_str(), ui::flag::serverPort.c_str());
   }
-}
-
-static void startAutoConnect() {
-  s_timer_connect->expires_after(std::chrono::seconds(1));
-  s_timer_connect->async_wait([](asio::error_code ec) {
-    if (!s_rpc) {
-      connectServer();
-    }
-  });
 }
 
 void Home::onDraw() {
@@ -502,11 +485,10 @@ Home::Home() {
   initGUI();
 
   s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
-  s_timer_connect = std::make_unique<asio::steady_timer>(App::instance()->context());
-
-  startAutoConnect();
+  connectServer();
 }
 
 Home::~Home() {
   ImPlot::DestroyContext();
+  s_rpc_client->close();
 }
