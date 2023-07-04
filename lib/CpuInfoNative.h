@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #ifdef __linux__
-#include <bits/types/FILE.h>
+#include <cstdio>
 #endif
 
 #ifdef __APPLE__

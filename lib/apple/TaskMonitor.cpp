@@ -28,7 +28,7 @@ bool TaskMonitor::update() {
     if (pt) {
       pthread_getname_np(pt, name_tmp, sizeof(name_tmp));
       if (strlen(name_tmp) == 0) {
-        sprintf(name_tmp, "%d", id);
+        snprintf(name_tmp, sizeof(name_tmp), "%d", id);
       }
       name = name_tmp;
     }
