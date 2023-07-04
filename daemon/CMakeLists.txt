@@ -13,7 +13,7 @@ link_libraries(cpu_monitor_lib)
 
 # asio
 add_definitions(-DASIO_STANDALONE)
-include_directories(../thirdparty/asio/include)
+include_directories(../thirdparty/asio/asio/include)
 
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} cpu_monitor_common)

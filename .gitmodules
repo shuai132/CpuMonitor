@@ -4,3 +4,6 @@
 [submodule "thirdparty/implot"]
 	path = thirdparty/implot
 	url = git@github.com:epezent/implot.git
+[submodule "thirdparty/asio"]
+	path = thirdparty/asio
+	url = git@github.com:chriskohlhoff/asio.git
