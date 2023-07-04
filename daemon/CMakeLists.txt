@@ -7,6 +7,9 @@ project(cpu_monitor)
 
 link_libraries(pthread)
 
+# for android standalone e.g. termux
+add_definitions(-DANDROID_STANDALONE)
+
 # cpu_monitor_lib
 add_subdirectory(../lib cpu_monitor_lib)
 link_libraries(cpu_monitor_lib)

@@ -81,7 +81,7 @@
 
 #define cpu_monitor_LOG_WITH_COLOR
 
-#if defined(_WIN32) || defined(__ANDROID__) || defined(cpu_monitor_LOG_FOR_MCU)
+#if defined(_WIN32) || (defined(__ANDROID__) && !defined(ANDROID_STANDALONE)) || defined(cpu_monitor_LOG_FOR_MCU)
 #undef cpu_monitor_LOG_WITH_COLOR
 #endif
 
@@ -111,7 +111,7 @@
 
 #define cpu_monitor_LOG_END                 cpu_monitor_LOG_COLOR_END cpu_monitor_LOG_LINE_END
 
-#if __ANDROID__
+#if defined(__ANDROID__) && !defined(ANDROID_STANDALONE)
 #include <android/log.h>
 #define cpu_monitor_LOG_PRINTF(...)         __android_log_print(ANDROID_L##OG_DEBUG, "cpu_monitor_LOG", __VA_ARGS__)
 #else
@@ -201,7 +201,7 @@ return ss.str();
 #endif
 
 #if defined(cpu_monitor_LOG_SHOW_VERBOSE)
-#define cpu_monitor_LOGV(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_DEFAULT "[V]: %s: "         fmt cpu_monitor_LOG_END, cpu_monitor_LOG_BASE_FILENAME, ##__VA_ARGS__); } while(0)
+#define cpu_monitor_LOGV(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_DEFAULT cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[V]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
 #else
 #define cpu_monitor_LOGV(fmt, ...)          ((void)0)
 #endif
