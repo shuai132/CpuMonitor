@@ -10,6 +10,7 @@ class App : noncopyable {
 
  private:
   App();
+  ~App();
 
  public:
   void poll();

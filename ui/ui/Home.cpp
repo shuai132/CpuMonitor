@@ -489,6 +489,7 @@ Home::Home() {
 }
 
 Home::~Home() {
-  ImPlot::DestroyContext();
+  LOGI("~Home");
   s_rpc_client->close();
+  ImPlot::DestroyContext();
 }

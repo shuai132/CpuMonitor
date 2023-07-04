@@ -1,5 +1,6 @@
 #include "App.h"
 
+#include "log.h"
 #include "ui/Home.h"
 
 static std::unique_ptr<Home> home;
@@ -13,6 +14,11 @@ App::App() {
   context_.post([] {
     home = std::make_unique<Home>();
   });
+}
+
+App::~App() {
+  LOGI("~App");
+  home = nullptr;
 }
 
 void App::poll() {
