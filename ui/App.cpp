@@ -23,6 +23,7 @@ App::~App() {
 
 void App::poll() {
   context_.poll();
+  context_.reset();
   home->onDraw();
 }
 

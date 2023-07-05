@@ -144,24 +144,44 @@ static void initRpcTask() {
   });
 }
 
-static void connectServer() {
+static void initClient() {
+  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
   auto& client = s_rpc_client;
   client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
     LOGI("on_open");
     s_rpc = std::move(rpc);
     initRpcTask();
   };
+  client->on_open_failed = [](const std::error_code& ec) {
+    LOGI("on_open_failed: %s", ec.message().c_str());
+  };
   client->on_close = [] {
     LOGI("on_close");
     s_rpc = nullptr;
   };
   client->set_reconnect(1000);
+}
+
+static void connectServer() {
+  auto& client = s_rpc_client;
   if (ui::flag::useLocal) {
     client->open("localhost", std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open usb: localhost:%s", ui::flag::serverPort.c_str());
   } else {
     client->open(ui::flag::serverAddr, std::strtol(ui::flag::serverPort.c_str(), nullptr, 10));
     LOGI("try open tcp: %s:%s", ui::flag::serverAddr.c_str(), ui::flag::serverPort.c_str());
+  }
+}
+
+static void checkIpChange() {
+  static bool useLocal = false;
+  static std::string serverAddr;
+  static std::string serverPort;
+  if (useLocal != ui::flag::useLocal || serverAddr != ui::flag::serverAddr || serverPort != ui::flag::serverPort) {
+    useLocal = ui::flag::useLocal;
+    serverAddr = ui::flag::serverAddr;
+    serverPort = ui::flag::serverPort;
+    connectServer();
   }
 }
 
@@ -185,6 +205,8 @@ void Home::onDraw() {
     ImGui::InputText("port##input_server_port", (char*)ui::flag::serverPort.data(), ui::flag::serverPort.capacity());
     ImGui::PopItemWidth();
   }
+
+  checkIpChange();
 
   ImGui::SameLine();
   ImGui::Checkbox("Ave##Show Ave", &ui::flag::showCpuAve);
@@ -483,9 +505,7 @@ void Home::initGUI() {
 
 Home::Home() {
   initGUI();
-
-  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
-  connectServer();
+  initClient();
 }
 
 Home::~Home() {

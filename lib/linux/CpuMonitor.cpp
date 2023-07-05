@@ -23,11 +23,13 @@ CpuMonitor::CpuMonitor() {
 
 void CpuMonitor::update(bool updateCores) {
   FILE *fp = fopen("/proc/stat", "r");
+  if (fp == nullptr) {
+    cpu_monitor_LOGE("open failed: /proc/stat");
+    return;
+  }
   defer {
-    if (fp == nullptr) return;
     fclose(fp);
   };
-  if (fp == nullptr) throw std::runtime_error("can not open /proc/stat");
 
   ave->update(fp);
 

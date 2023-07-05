@@ -50,7 +50,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/CpuMonitor.zip
-          asset_name: CpuMonitor_$${{ runner.os }}.zip
+          asset_name: CpuMonitor_${{ runner.os }}.zip
           tag: ${{ github.ref }}
           overwrite: true
 
