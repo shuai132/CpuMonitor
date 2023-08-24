@@ -7,13 +7,12 @@
 #include "Common.h"
 #include "CpuMsg_generated.h"
 #include "ProcessMsg_generated.h"
-#include "RpcMsg.h"
 #include "Shell.hpp"
 #include "Types.h"
-#include "defer.h"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
+#include "plugin/flatbuffers.hpp"
 #include "rpc_client.hpp"
 
 using namespace cpu_monitor;
@@ -32,7 +31,7 @@ std::string serverPort = "8088";           // NOLINT
 
 // rpc
 static std::unique_ptr<asio_net::rpc_client> s_rpc_client;
-static std::shared_ptr<RpcCore::Rpc> s_rpc;
+static std::shared_ptr<rpc_core::rpc> s_rpc;
 
 static std::vector<msg::CpuMsgT> s_msg_cpus;
 
@@ -106,16 +105,16 @@ static void createTestData() {
 }
 
 static void initRpcTask() {
-  s_rpc->subscribe("on_cpu_msg", [](RpcMsg<msg::CpuMsgT> msg) {
+  s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsgT msg) {
     if (s_show_testing) {
       s_show_testing = false;
       cleanData();
     }
-    s_msg_cpus.push_back(std::move(msg.msg));
+    s_msg_cpus.push_back(std::move(msg));
   });
 
-  s_rpc->subscribe("on_process_msg", [](RpcMsg<msg::ProcessMsgT> msg) {
-    auto& processMsg = msg.msg;
+  s_rpc->subscribe("on_process_msg", [](msg::ProcessMsgT msg) {
+    auto& processMsg = msg;
     for (auto& pInfo : processMsg.infos) {
       auto& processValue = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
       auto& threadInfos = processValue.threadInfos;
@@ -147,7 +146,7 @@ static void initRpcTask() {
 static void initClient() {
   s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
   auto& client = s_rpc_client;
-  client->on_open = [](std::shared_ptr<RpcCore::Rpc> rpc) {
+  client->on_open = [](std::shared_ptr<rpc_core::rpc> rpc) {
     LOGI("on_open");
     s_rpc = std::move(rpc);
     initRpcTask();
@@ -243,8 +242,8 @@ void Home::onDraw() {
           LOGI("add name: %s", name.c_str());
           if (s_rpc) {
             s_rpc->cmd("add_name")
-                ->msg(RpcCore::String(name.c_str()))  // NOLINT
-                ->rsp([](const RpcCore::String& msg) {
+                ->msg(std::string(name.c_str()))  // NOLINT
+                ->rsp([](const std::string& msg) {
                   LOGI("add name rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -259,8 +258,8 @@ void Home::onDraw() {
           LOGI("del name: %s", name.c_str());
           if (s_rpc) {
             s_rpc->cmd("del_name")
-                ->msg(RpcCore::String(name.c_str()))  // NOLINT
-                ->rsp([](const RpcCore::String& msg) {
+                ->msg(std::string(name.c_str()))  // NOLINT
+                ->rsp([](const std::string& msg) {
                   LOGI("del name rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -286,8 +285,8 @@ void Home::onDraw() {
           LOGI("add pid: %s", pid.c_str());
           if (s_rpc) {
             s_rpc->cmd("add_pid")
-                ->msg(RpcCore::String(pid.c_str()))  // NOLINT
-                ->rsp([](const RpcCore::String& msg) {
+                ->msg(std::string(pid.c_str()))  // NOLINT
+                ->rsp([](const std::string& msg) {
                   LOGI("add pid rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -302,8 +301,8 @@ void Home::onDraw() {
           LOGI("del pid: %s", pid.c_str());
           if (s_rpc) {
             s_rpc->cmd("del_pid")
-                ->msg(RpcCore::String(pid.c_str()))  // NOLINT
-                ->rsp([](const RpcCore::String& msg) {
+                ->msg(std::string(pid.c_str()))  // NOLINT
+                ->rsp([](const std::string& msg) {
                   LOGI("del pid rsp: %s", msg.c_str());
                 })
                 ->call();
@@ -328,7 +327,7 @@ void Home::onDraw() {
   if (ImGui::Button("GetPids")) {
     if (s_rpc) {
       s_rpc->cmd("get_added_pids")
-          ->rsp([](RpcMsg<msg::ProcessMsgT> msg) {
+          ->rsp([](msg::ProcessMsgT msg) {
             LOGI("get_added_pids rsp:");
             for (const auto& item : msg->infos) {
               LOGI("pid: %" PRIu64 ", name: %s", item->id, item->name.c_str());

@@ -9,11 +9,11 @@
 #include "CpuMsg_generated.h"
 #include "MemMonitor.h"
 #include "ProcessMsg_generated.h"
-#include "RpcMsg.h"
 #include "TaskMonitor.h"
 #include "Utils.h"
 #include "asio.hpp"
 #include "log.h"
+#include "plugin/flatbuffers.hpp"
 #include "rpc_server.hpp"
 #include "utils/string_utils.h"
 #include "utils/time_utils.h"
@@ -37,7 +37,7 @@ static std::unique_ptr<asio::steady_timer> s_timer_update;
 
 // rpc
 static std::unique_ptr<asio_net::rpc_server> s_rpc_server;
-static std::shared_ptr<RpcCore::Rpc> s_rpc;
+static std::shared_ptr<rpc_core::rpc> s_rpc;
 
 // cpu monitor
 static std::unique_ptr<CpuMonitor> s_monitor_cpu;
@@ -67,9 +67,9 @@ static bool addMonitorPid(const std::string& pid);
 static bool addMonitorPidByName(const std::string& name);
 
 static void initRpcTask() {
-  using namespace RpcCore;
+  using namespace rpc_core;
 
-  s_rpc->subscribe("add_pid", [](const String& pid) -> String {
+  s_rpc->subscribe("add_pid", [](const std::string& pid) -> std::string {
     LOGD("add_pid: %s", pid.c_str());
 
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
@@ -86,7 +86,7 @@ static void initRpcTask() {
     }
   });
 
-  s_rpc->subscribe("del_pid", [](const String& pid) -> String {
+  s_rpc->subscribe("del_pid", [](const std::string& pid) -> std::string {
     LOGD("del_pid: %s", pid.c_str());
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
       return std::to_string(item.first.pid) == pid;
@@ -99,7 +99,7 @@ static void initRpcTask() {
     }
   });
 
-  s_rpc->subscribe("add_name", [](const String& name) -> String {
+  s_rpc->subscribe("add_name", [](const std::string& name) -> std::string {
     LOGD("add_name: %s", name.c_str());
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
       return p.first.name == name;
@@ -115,7 +115,7 @@ static void initRpcTask() {
     }
   });
 
-  s_rpc->subscribe("del_name", [](const String& name) -> String {
+  s_rpc->subscribe("del_name", [](const std::string& name) -> std::string {
     LOGD("del_name: %s", name.c_str());
     auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
       return item.first.name == name;
@@ -129,13 +129,13 @@ static void initRpcTask() {
   });
 
   s_rpc->subscribe("get_added_pids", [] {
-    RpcMsg<msg::ProcessMsgT> msg;
+    msg::ProcessMsgT msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
       auto processInfo = std::make_unique<msg::ProcessInfoT>();
       processInfo->id = id.pid;
       processInfo->name = id.name;
-      msg->infos.push_back(std::move(processInfo));
+      msg.infos.push_back(std::move(processInfo));
     }
     return msg;
   });
@@ -155,14 +155,14 @@ static void sendNowCpuInfos() {
 
   // cpu info
   {
-    RpcMsg<msg::CpuMsgT> msg;
+    msg::CpuMsgT msg;
     // ave
     {
       auto info = std::make_unique<msg::CpuInfoT>();
       info->name = s_monitor_cpu->ave->name;
       info->usage = s_monitor_cpu->ave->usage;
       info->timestamps = timestampsNow;
-      msg->ave = std::move(info);
+      msg.ave = std::move(info);
     }
     // cores
     for (const auto& core : s_monitor_cpu->cores) {
@@ -170,15 +170,15 @@ static void sendNowCpuInfos() {
       info->name = core->name;
       info->usage = core->usage;
       info->timestamps = timestampsNow;
-      msg->cores.push_back(std::move(info));
+      msg.cores.push_back(std::move(info));
     }
-    msg->timestamps = timestampsNow;
+    msg.timestamps = timestampsNow;
     s_rpc->cmd("on_cpu_msg")->msg(msg)->call();
   }
 
   // process info
   {
-    RpcMsg<msg::ProcessMsgT> msg;
+    msg::ProcessMsgT msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
       auto& tasks = monitorPid.second.tasks;
@@ -207,9 +207,9 @@ static void sendNowCpuInfos() {
         taskInfo->timestamps = timestampsNow;
         processInfo->thread_infos.push_back(std::move(taskInfo));
       }
-      msg->infos.push_back(std::move(processInfo));
+      msg.infos.push_back(std::move(processInfo));
     }
-    msg->timestamps = timestampsNow;
+    msg.timestamps = timestampsNow;
     s_rpc->cmd("on_process_msg")->msg(msg)->call();
   }
 }
