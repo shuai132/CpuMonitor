@@ -5,14 +5,11 @@
 
 #include "App.h"
 #include "Common.h"
-#include "CpuMsg_generated.h"
-#include "ProcessMsg_generated.h"
 #include "Shell.hpp"
 #include "Types.h"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
-#include "plugin/flatbuffers.hpp"
 #include "rpc_client.hpp"
 
 using namespace cpu_monitor;
@@ -33,7 +30,7 @@ std::string serverPort = "8088";           // NOLINT
 static std::unique_ptr<asio_net::rpc_client> s_rpc_client;
 static std::shared_ptr<rpc_core::rpc> s_rpc;
 
-static std::vector<msg::CpuMsgT> s_msg_cpus;
+static std::vector<msg::CpuMsg> s_msg_cpus;
 
 struct ProcessKey {
   PID_t pid;
@@ -44,7 +41,7 @@ struct ProcessKey {
   }
 };
 
-using ThreadInfosType = std::vector<std::unique_ptr<cpu_monitor::msg::ThreadInfoT>>;
+using ThreadInfosType = std::vector<msg::ThreadInfo>;
 
 struct ThreadInfoKey {
   ThreadInfoKey(TaskId_t id) : id(id) {}  // NOLINT
@@ -66,7 +63,7 @@ struct ProcessValue {
   };
   std::list<ThreadInfoItem> threadInfos;
 
-  std::vector<std::unique_ptr<msg::MemInfoT>> memInfos;
+  std::vector<msg::MemInfo> memInfos;
 };
 
 static std::map<ProcessKey, ProcessValue> s_msg_pids;
@@ -86,17 +83,16 @@ static void createTestData() {
   for (int i = 0; i < 1000; ++i) {
     // cpu
     {
-      msg::CpuMsgT msg;
+      msg::CpuMsg msg;
       msg.timestamps = i;
-      msg.ave = std::make_unique<cpu_monitor::msg::CpuInfoT>();
-      msg.ave->name = "cpu";
-      msg.ave->usage = (sin((float)i / 10) + 1) * 50;
+      msg.ave.name = "cpu";
+      msg.ave.usage = (sin((float)i / 10) + 1) * 50;
 
       for (int j = 0; j < 4; ++j) {
-        auto c = std::make_unique<cpu_monitor::msg::CpuInfoT>();
-        c->name = "cpu" + std::to_string(j);
-        c->usage = (sin((float)(i + j * 10) / 10) + 1) * 50;
-        c->timestamps = i;
+        msg::CpuInfo c;
+        c.name = "cpu" + std::to_string(j);
+        c.usage = (sin((float)(i + j * 10) / 10) + 1) * 50;
+        c.timestamps = i;
         msg.cores.push_back(std::move(c));
       }
       s_msg_cpus.push_back(std::move(msg));
@@ -105,7 +101,7 @@ static void createTestData() {
 }
 
 static void initRpcTask() {
-  s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsgT msg) {
+  s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsg msg) {
     if (s_show_testing) {
       s_show_testing = false;
       cleanData();
@@ -113,22 +109,22 @@ static void initRpcTask() {
     s_msg_cpus.push_back(std::move(msg));
   });
 
-  s_rpc->subscribe("on_process_msg", [](msg::ProcessMsgT msg) {
+  s_rpc->subscribe("on_process_msg", [](msg::ProcessMsg msg) {
     auto& processMsg = msg;
     for (auto& pInfo : processMsg.infos) {
-      auto& processValue = s_msg_pids[{(PID_t)pInfo->id, pInfo->name}];
+      auto& processValue = s_msg_pids[{(PID_t)pInfo.id, pInfo.name}];
       auto& threadInfos = processValue.threadInfos;
-      s_pid_current_thread_num[pInfo->id] = pInfo->thread_infos.size();
+      s_pid_current_thread_num[pInfo.id] = pInfo.thread_infos.size();
       // thread info
-      for (auto& item : pInfo->thread_infos) {
+      for (auto& item : pInfo.thread_infos) {
         auto iter = std::find_if(threadInfos.begin(), threadInfos.end(), [&](auto& v) {
-          return v.key.id == item->id;
+          return v.key.id == item.id;
         });
         if (iter != threadInfos.cend()) {
-          iter->key.usageSum += item->usage;
+          iter->key.usageSum += item.usage;
           iter->cpuInfos.push_back(std::move(item));
         } else {
-          ThreadInfoKey key{(TaskId_t)item->id, item->usage};
+          ThreadInfoKey key{(TaskId_t)item.id, item.usage};
           ThreadInfosType value;
           value.push_back(std::move(item));
           threadInfos.push_back(ProcessValue::ThreadInfoItem{key, std::move(value)});
@@ -138,7 +134,7 @@ static void initRpcTask() {
 
       // mem info
       auto& memInfos = processValue.memInfos;
-      memInfos.push_back(std::move(pInfo->mem_info));
+      memInfos.push_back(std::move(pInfo.mem_info));
     }
   });
 }
@@ -327,10 +323,10 @@ void Home::onDraw() {
   if (ImGui::Button("GetPids")) {
     if (s_rpc) {
       s_rpc->cmd("get_added_pids")
-          ->rsp([](msg::ProcessMsgT msg) {
+          ->rsp([](msg::ProcessMsg msg) {
             LOGI("get_added_pids rsp:");
             for (const auto& item : msg->infos) {
-              LOGI("pid: %" PRIu64 ", name: %s", item->id, item->name.c_str());
+              LOGI("pid: %" PRIu64 ", name: %s", item.id, item.name.c_str());
             }
           })
           ->call();
@@ -350,17 +346,17 @@ void Home::onDraw() {
     ImPlot::SetupLegend(ImPlotLocation_NorthWest);
     if (!s_msg_cpus.empty()) {
       ImPlot::PlotLineG(
-          s_msg_cpus.front().ave->name.c_str(),
+          s_msg_cpus.front().ave.name.c_str(),
           (ImPlotGetter)[](int idx, void* user_data) {
             auto& info = s_msg_cpus[idx];
-            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave->usage};
+            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave.usage};
           },
           nullptr, (int)s_msg_cpus.size());
 
       // shade
       ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
       ImPlot::PlotShadedG(
-          s_msg_cpus.front().ave->name.c_str(),
+          s_msg_cpus.front().ave.name.c_str(),
           (ImPlotGetter)[](int idx, void* user_data) {
             auto& info = s_msg_cpus[idx];
             return ImPlotPoint{calcTimestampsFromStart(info.timestamps), 0};
@@ -368,7 +364,7 @@ void Home::onDraw() {
           nullptr,
           (ImPlotGetter)[](int idx, void* user_data) {
             auto& info = s_msg_cpus[idx];
-            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave->usage};
+            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave.usage};
           },
           nullptr, (int)s_msg_cpus.size(), 0);
       ImPlot::PopStyleVar();
@@ -393,10 +389,10 @@ void Home::onDraw() {
         static uint32_t indexNow;
         indexNow = i;
         ImPlot::PlotLineG(
-            s_msg_cpus.front().cores[indexNow]->name.c_str(),
+            s_msg_cpus.front().cores[indexNow].name.c_str(),
             (ImPlotGetter)[](int idx, void* user_data) {
               auto& info = s_msg_cpus[idx].cores[indexNow];
-              return ImPlotPoint{calcTimestampsFromStart(info->timestamps), info->usage};
+              return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.usage};
             },
             nullptr, (int)s_msg_cpus.size());
       }
@@ -430,12 +426,12 @@ void Home::onDraw() {
             const static ThreadInfosType* threadInfos;
             threadInfos = &(item.cpuInfos);
 
-            auto labelName = std::string("tid: ") + std::to_string(threadInfos->front()->id) + " name: " + threadInfos->front()->name;
+            auto labelName = std::string("tid: ") + std::to_string(threadInfos->front().id) + " name: " + threadInfos->front().name;
             ImPlot::PlotLineG(
                 labelName.c_str(),
                 (ImPlotGetter)[](int idx, void* user_data) {
                   auto& info = (*threadInfos)[idx];
-                  return ImPlotPoint{calcTimestampsFromStart(info->timestamps), info->usage};
+                  return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.usage};
                 },
                 nullptr, (int)threadInfos->size());
           }
@@ -466,14 +462,14 @@ void Home::onDraw() {
             "VmHWM",
             (ImPlotGetter)[](int idx, void* user_data) {
               auto& info = (*memInfos)[idx];
-              return ImPlotPoint{calcTimestampsFromStart(info->timestamps), (float)info->hwm / 1024};
+              return ImPlotPoint{calcTimestampsFromStart(info.timestamps), (float)info.hwm / 1024};
             },
             nullptr, (int)memInfos->size());
         ImPlot::PlotLineG(
             "VmRSS",
             (ImPlotGetter)[](int idx, void* user_data) {
               auto& info = (*memInfos)[idx];
-              return ImPlotPoint{calcTimestampsFromStart(info->timestamps), (float)info->rss / 1024};
+              return ImPlotPoint{calcTimestampsFromStart(info.timestamps), (float)info.rss / 1024};
             },
             nullptr, (int)memInfos->size());
         ImPlot::EndPlot();

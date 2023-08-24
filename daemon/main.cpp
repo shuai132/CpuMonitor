@@ -6,14 +6,11 @@
 
 #include "Common.h"
 #include "CpuMonitor.h"
-#include "CpuMsg_generated.h"
 #include "MemMonitor.h"
-#include "ProcessMsg_generated.h"
 #include "TaskMonitor.h"
 #include "Utils.h"
 #include "asio.hpp"
 #include "log.h"
-#include "plugin/flatbuffers.hpp"
 #include "rpc_server.hpp"
 #include "utils/string_utils.h"
 #include "utils/time_utils.h"
@@ -129,12 +126,12 @@ static void initRpcTask() {
   });
 
   s_rpc->subscribe("get_added_pids", [] {
-    msg::ProcessMsgT msg;
+    msg::ProcessMsg msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
-      auto processInfo = std::make_unique<msg::ProcessInfoT>();
-      processInfo->id = id.pid;
-      processInfo->name = id.name;
+      msg::ProcessInfo processInfo;
+      processInfo.id = id.pid;
+      processInfo.name = id.name;
       msg.infos.push_back(std::move(processInfo));
     }
     return msg;
@@ -155,21 +152,21 @@ static void sendNowCpuInfos() {
 
   // cpu info
   {
-    msg::CpuMsgT msg;
+    msg::CpuMsg msg;
     // ave
     {
-      auto info = std::make_unique<msg::CpuInfoT>();
-      info->name = s_monitor_cpu->ave->name;
-      info->usage = s_monitor_cpu->ave->usage;
-      info->timestamps = timestampsNow;
+      msg::CpuInfo info;
+      info.name = s_monitor_cpu->ave->name;
+      info.usage = s_monitor_cpu->ave->usage;
+      info.timestamps = timestampsNow;
       msg.ave = std::move(info);
     }
     // cores
     for (const auto& core : s_monitor_cpu->cores) {
-      auto info = std::make_unique<msg::CpuInfoT>();
-      info->name = core->name;
-      info->usage = core->usage;
-      info->timestamps = timestampsNow;
+      msg::CpuInfo info;
+      info.name = core->name;
+      info.usage = core->usage;
+      info.timestamps = timestampsNow;
       msg.cores.push_back(std::move(info));
     }
     msg.timestamps = timestampsNow;
@@ -178,34 +175,34 @@ static void sendNowCpuInfos() {
 
   // process info
   {
-    msg::ProcessMsgT msg;
+    msg::ProcessMsg msg;
     for (const auto& monitorPid : s_monitor_pids) {
       auto& id = monitorPid.first;
       auto& tasks = monitorPid.second.tasks;
       auto& memUsage = monitorPid.second.memUsage;
 
-      auto processInfo = std::make_unique<msg::ProcessInfoT>();
-      processInfo->id = id.pid;
-      processInfo->name = id.name;
+      msg::ProcessInfo processInfo;
+      processInfo.id = id.pid;
+      processInfo.name = id.name;
 
       // mem info
       {
-        auto mem = std::make_unique<msg::MemInfoT>();
-        mem->peak = memUsage.VmPeak;
-        mem->size = memUsage.VmSize;
-        mem->hwm = memUsage.VmHWM;
-        mem->rss = memUsage.VmRSS;
-        mem->timestamps = timestampsNow;
-        processInfo->mem_info = std::move(mem);
+        msg::MemInfo mem;
+        mem.peak = memUsage.VmPeak;
+        mem.size = memUsage.VmSize;
+        mem.hwm = memUsage.VmHWM;
+        mem.rss = memUsage.VmRSS;
+        mem.timestamps = timestampsNow;
+        processInfo.mem_info = std::move(mem);
       }
 
       for (const auto& task : tasks) {
-        auto taskInfo = std::make_unique<msg::ThreadInfoT>();
-        taskInfo->id = task->id;
-        taskInfo->name = task->name;
-        taskInfo->usage = task->usage;
-        taskInfo->timestamps = timestampsNow;
-        processInfo->thread_infos.push_back(std::move(taskInfo));
+        msg::ThreadInfo taskInfo;
+        taskInfo.id = task->id;
+        taskInfo.name = task->name;
+        taskInfo.usage = task->usage;
+        taskInfo.timestamps = timestampsNow;
+        processInfo.thread_infos.push_back(std::move(taskInfo));
       }
       msg.infos.push_back(std::move(processInfo));
     }

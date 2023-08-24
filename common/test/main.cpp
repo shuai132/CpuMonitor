@@ -7,9 +7,9 @@ using namespace cpu_monitor;
 int main() {
   std::string payload;
   {
-    msg::CpuMsgT msg;
+    msg::CpuMsg msg;
     for (int i = 0; i < 3; ++i) {
-      auto cpuInfo = std::make_unique<msg::CpuInfoT>();
+      auto cpuInfo = std::make_unique<msg::CpuInfo>();
       cpuInfo->name = "cpu" + std::to_string(i);
       cpuInfo->usage = 1.f + (float)i;
       msg->cores.push_back(std::move(cpuInfo));
@@ -18,7 +18,7 @@ int main() {
     payload = msg.serialize();
   }
   {
-    msg::CpuMsgT msg;
+    msg::CpuMsg msg;
     bool ok = msg.deSerialize(payload);
     ASSERT(ok);
     for (const auto& item : msg->cores) {
