@@ -5,6 +5,7 @@
 // LOG_LINE_END_CRLF        默认是\n结尾 添加此宏将以\r\n结尾
 // LOG_FOR_MCU              更适用于MCU环境
 // LOG_NOT_EXIT_ON_FATAL    FATAL默认退出程序 添加此宏将不退出
+// LOG_DISABLE_ALL          关闭所有日志
 //
 // c++11环境默认打开以下内容
 // LOG_ENABLE_THREAD_SAFE   线程安全
@@ -37,6 +38,19 @@
 
 // 在库中使用时需取消注释
 //#define LOG_IN_LIB
+
+#ifdef LOG_DISABLE_ALL
+
+#define LOG(fmt, ...)           ((void)0)
+#define LOGT(tag, fmt, ...)     ((void)0)
+#define LOGI(fmt, ...)          ((void)0)
+#define LOGW(fmt, ...)          ((void)0)
+#define LOGE(fmt, ...)          ((void)0)
+#define LOGF(fmt, ...)          ((void)0)
+#define LOGD(fmt, ...)          ((void)0)
+#define LOGV(fmt, ...)          ((void)0)
+
+#else
 
 #ifdef __cplusplus
 #include <cstring>
@@ -129,7 +143,10 @@
 #include <mutex>
 struct LOG_Mutex {
 static std::mutex& mutex() {
-static std::mutex mutex;
+// 1. never delete, avoid destroy before user log
+// 2. static memory, avoid memory fragmentation
+static char memory[sizeof(std::mutex)];
+static std::mutex& mutex = *(new (memory) std::mutex());
 return mutex;
 }
 };
@@ -204,4 +221,6 @@ return ss.str();
 #define LOGV(fmt, ...)          do{ LOG_PRINTF_IMPL(LOG_COLOR_DEFAULT LOG_TIME_LABEL LOG_THREAD_LABEL "[V]: %s:%d "       fmt LOG_END LOG_TIME_VALUE LOG_THREAD_VALUE, LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
 #else
 #define LOGV(fmt, ...)          ((void)0)
+#endif
+
 #endif
