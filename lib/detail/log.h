@@ -1,44 +1,40 @@
-// 可配置项（默认未定义）
-// cpu_monitor_LOG_NDEBUG               关闭cpu_monitor_LOGD的输出
-// cpu_monitor_LOG_SHOW_VERBOSE         显示cpu_monitor_LOGV的输出
-// cpu_monitor_LOG_DISABLE_COLOR        禁用颜色显示
-// cpu_monitor_LOG_LINE_END_CRLF        默认是\n结尾 添加此宏将以\r\n结尾
-// cpu_monitor_LOG_FOR_MCU              更适用于MCU环境
-// cpu_monitor_LOG_NOT_EXIT_ON_FATAL    FATAL默认退出程序 添加此宏将不退出
-// cpu_monitor_LOG_DISABLE_ALL          关闭所有日志
-// L_O_G_DISABLE_ALL(关闭所有日志 包含所有库)
+// 1. 全局控制
+// L_O_G_NDEBUG                 关闭DEBUG日志（默认依据NDEBUG自动判断）
+// L_O_G_SHOW_DEBUG             强制开启DEBUG日志
+// L_O_G_DISABLE_ALL            关闭所有日志
+// L_O_G_DISABLE_COLOR          禁用颜色显示
+// L_O_G_LINE_END_CRLF          默认是\n结尾 添加此宏将以\r\n结尾
+// L_O_G_FOR_MCU                更适用于MCU环境
+// L_O_G_NOT_EXIT_ON_FATAL      FATAL默认退出程序 添加此宏将不退出
+// L_O_G_SHOW_FULL_PATH         显示文件绝对路径
 //
 // c++11环境默认打开以下内容
-// cpu_monitor_LOG_ENABLE_THREAD_SAFE   线程安全
-// cpu_monitor_LOG_ENABLE_THREAD_ID     显示线程ID
-// cpu_monitor_LOG_ENABLE_DATE_TIME     显示日期
+// L_O_G_ENABLE_THREAD_SAFE     线程安全
+// L_O_G_ENABLE_THREAD_ID       显示线程ID
+// L_O_G_ENABLE_DATE_TIME       显示日期
 // 分别可通过下列禁用
-// cpu_monitor_LOG_DISABLE_THREAD_SAFE
-// cpu_monitor_LOG_DISABLE_THREAD_ID
-// cpu_monitor_LOG_DISABLE_DATE_TIME
+// L_O_G_DISABLE_THREAD_SAFE
+// L_O_G_DISABLE_THREAD_ID
+// L_O_G_DISABLE_DATE_TIME
+// 可通过`L_O_G_GET_TID_CUSTOM`自定义获取线程ID的实现
 //
-// 其他配置项
-// cpu_monitor_LOG_PRINTF_IMPL          定义输出实现（默认使用printf）
-// 并添加形如int cpu_monitor_LOG_PRINTF_IMPL(const char *fmt, ...)的实现
+// 2. 自定义实现
+// L_O_G_PRINTF_CUSTOM          自定义输出实现
+// 并添加实现`int L_O_G_PRINTF_CUSTOM(const char *fmt, ...)`
 //
-// 在库中使用时
-// 1. 修改此文件中的`cpu_monitor_LOG`以包含库名前缀（全部替换即可）
-// 2. 取消这行注释（以屏蔽DEBUG日志）: #define cpu_monitor_LOG_IN_LIB
-// 库中可配置项
-// cpu_monitor_LOG_SHOW_DEBUG           开启cpu_monitor_LOGD的输出
-//
-// 非库中使用时
-// cpu_monitor_LOGD的输出在debug时打开 release时关闭（依据NDEBUG宏）
+// 3. 在库中使用时
+// 3.1. 替换`cpu_monitor_LOG`为库名
+// 3.2. 定义`cpu_monitor_LOG_IN_LIB`
+// 3.3. 可配置项
+// cpu_monitor_LOG_SHOW_DEBUG               开启cpu_monitor_LOGD的输出
+// cpu_monitor_LOG_SHOW_VERBOSE             显示cpu_monitor_LOGV的输出
+// cpu_monitor_LOG_DISABLE_ALL              关闭所有日志
 
 #pragma once
 
 // clang-format off
 
-// 自定义配置
-//#include "log_config.h"
-
-// 在库中使用时需取消注释
-#define cpu_monitor_LOG_IN_LIB
+//#define cpu_monitor_LOG_IN_LIB
 
 #if defined(cpu_monitor_LOG_DISABLE_ALL) || defined(L_O_G_DISABLE_ALL)
 
@@ -58,16 +54,16 @@
 #include <cstdlib>
 #if __cplusplus >= 201103L
 
-#if !defined(cpu_monitor_LOG_DISABLE_THREAD_SAFE) && !defined(cpu_monitor_LOG_ENABLE_THREAD_SAFE)
-#define cpu_monitor_LOG_ENABLE_THREAD_SAFE
+#if !defined(L_O_G_DISABLE_THREAD_SAFE) && !defined(L_O_G_ENABLE_THREAD_SAFE)
+#define L_O_G_ENABLE_THREAD_SAFE
 #endif
 
-#if !defined(cpu_monitor_LOG_DISABLE_THREAD_ID) && !defined(cpu_monitor_LOG_ENABLE_THREAD_ID)
-#define cpu_monitor_LOG_ENABLE_THREAD_ID
+#if !defined(L_O_G_DISABLE_THREAD_ID) && !defined(L_O_G_ENABLE_THREAD_ID)
+#define L_O_G_ENABLE_THREAD_ID
 #endif
 
-#if !defined(cpu_monitor_LOG_DISABLE_DATE_TIME) && !defined(cpu_monitor_LOG_ENABLE_DATE_TIME)
-#define cpu_monitor_LOG_ENABLE_DATE_TIME
+#if !defined(L_O_G_DISABLE_DATE_TIME) && !defined(L_O_G_ENABLE_DATE_TIME)
+#define L_O_G_ENABLE_DATE_TIME
 #endif
 
 #endif
@@ -76,35 +72,39 @@
 #include <stdlib.h>
 #endif
 
-#ifdef  cpu_monitor_LOG_LINE_END_CRLF
+#ifdef  L_O_G_LINE_END_CRLF
 #define cpu_monitor_LOG_LINE_END            "\r\n"
 #else
 #define cpu_monitor_LOG_LINE_END            "\n"
 #endif
 
-#ifdef cpu_monitor_LOG_NOT_EXIT_ON_FATAL
+#ifdef L_O_G_NOT_EXIT_ON_FATAL
 #define cpu_monitor_LOG_EXIT_PROGRAM()
 #else
-#ifdef cpu_monitor_LOG_FOR_MCU
+#ifdef L_O_G_FOR_MCU
 #define cpu_monitor_LOG_EXIT_PROGRAM()      do{ for(;;); } while(0)
 #else
 #define cpu_monitor_LOG_EXIT_PROGRAM()      exit(EXIT_FAILURE)
 #endif
 #endif
 
+#ifdef L_O_G_SHOW_FULL_PATH
+#define cpu_monitor_LOG_BASE_FILENAME       (__FILE__)
+#else
 #ifdef __FILE_NAME__
 #define cpu_monitor_LOG_BASE_FILENAME       (__FILE_NAME__)
 #else
 #define cpu_monitor_LOG_BASE_FILENAME       (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #endif
+#endif
 
 #define cpu_monitor_LOG_WITH_COLOR
 
-#if defined(_WIN32) || (defined(__ANDROID__) && !defined(ANDROID_STANDALONE)) || defined(cpu_monitor_LOG_FOR_MCU)
+#if defined(_WIN32) || (defined(__ANDROID__) && !defined(ANDROID_STANDALONE)) || defined(L_O_G_FOR_MCU)
 #undef cpu_monitor_LOG_WITH_COLOR
 #endif
 
-#ifdef cpu_monitor_LOG_DISABLE_COLOR
+#ifdef L_O_G_DISABLE_COLOR
 #undef cpu_monitor_LOG_WITH_COLOR
 #endif
 
@@ -130,21 +130,23 @@
 
 #define cpu_monitor_LOG_END                 cpu_monitor_LOG_COLOR_END cpu_monitor_LOG_LINE_END
 
+#ifndef L_O_G_PRINTF
+#ifndef cpu_monitor_LOG_PRINTF_DEFAULT
 #if defined(__ANDROID__) && !defined(ANDROID_STANDALONE)
 #include <android/log.h>
-#define cpu_monitor_LOG_PRINTF(...)         __android_log_print(ANDROID_L##OG_DEBUG, "cpu_monitor_LOG", __VA_ARGS__)
+#define cpu_monitor_LOG_PRINTF_DEFAULT(...) __android_log_print(ANDROID_L##OG_DEBUG, "cpu_monitor_LOG", __VA_ARGS__)
 #else
-#define cpu_monitor_LOG_PRINTF(...)         printf(__VA_ARGS__)
+#define cpu_monitor_LOG_PRINTF_DEFAULT(...) printf(__VA_ARGS__)
+#endif
 #endif
 
-#ifndef cpu_monitor_LOG_PRINTF_IMPL
+#ifndef L_O_G_PRINTF_CUSTOM
 #ifdef __cplusplus
 #include <cstdio>
 #else
 #include <stdio.h>
 #endif
-
-#ifdef cpu_monitor_LOG_ENABLE_THREAD_SAFE
+#ifdef L_O_G_ENABLE_THREAD_SAFE
 #ifndef L_O_G_NS_MUTEX
 #define L_O_G_NS_MUTEX L_O_G_NS_MUTEX
 #include <mutex>
@@ -159,23 +161,26 @@ static std::mutex& mutex() {
 }
 };
 #endif
-#define cpu_monitor_LOG_PRINTF_IMPL(...) { \
+#define L_O_G_PRINTF(...) { \
   std::lock_guard<std::mutex> lock(L_O_G_NS_MUTEX::mutex()); \
-  cpu_monitor_LOG_PRINTF(__VA_ARGS__); \
+  cpu_monitor_LOG_PRINTF_DEFAULT(__VA_ARGS__); \
 }
 #else
-#define cpu_monitor_LOG_PRINTF_IMPL(...)    cpu_monitor_LOG_PRINTF(__VA_ARGS__)
+#define L_O_G_PRINTF(...)       cpu_monitor_LOG_PRINTF_DEFAULT(__VA_ARGS__)
 #endif
-
 #else
-extern int cpu_monitor_LOG_PRINTF_IMPL(const char *fmt, ...);
+extern int L_O_G_PRINTF_CUSTOM(const char *fmt, ...);
+#define L_O_G_PRINTF(...)       L_O_G_PRINTF_CUSTOM(__VA_ARGS__)
+#endif
 #endif
 
-#ifdef cpu_monitor_LOG_ENABLE_THREAD_ID
+#ifdef L_O_G_ENABLE_THREAD_ID
 #ifndef L_O_G_NS_GET_TID
 #define L_O_G_NS_GET_TID L_O_G_NS_GET_TID
 #include <cstdint>
-#ifdef _WIN32
+#ifdef L_O_G_GET_TID_CUSTOM
+extern uint32_t L_O_G_GET_TID_CUSTOM();
+#elif _WIN32
 #include <processthreadsapi.h>
 struct L_O_G_NS_GET_TID {
 static inline uint32_t get_tid() {
@@ -201,14 +206,19 @@ static inline uint32_t get_tid() {
 };
 #endif
 #endif
+#ifdef L_O_G_GET_TID_CUSTOM
+#define cpu_monitor_LOG_THREAD_LABEL "%u "
+#define cpu_monitor_LOG_THREAD_VALUE ,L_O_G_GET_TID_CUSTOM()
+#else
 #define cpu_monitor_LOG_THREAD_LABEL "%u "
 #define cpu_monitor_LOG_THREAD_VALUE ,L_O_G_NS_GET_TID::get_tid()
+#endif
 #else
 #define cpu_monitor_LOG_THREAD_LABEL
 #define cpu_monitor_LOG_THREAD_VALUE
 #endif
 
-#ifdef cpu_monitor_LOG_ENABLE_DATE_TIME
+#ifdef L_O_G_ENABLE_DATE_TIME
 #include <chrono>
 #include <sstream>
 #include <iomanip> // std::put_time
@@ -232,25 +242,29 @@ static inline std::string get_time() {
 #define cpu_monitor_LOG_TIME_VALUE
 #endif
 
-#define cpu_monitor_LOG(fmt, ...)           do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_GREEN   cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[*]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
-#define cpu_monitor_LOGT(tag, fmt, ...)     do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_BLUE    cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[" tag "]: %s:%d " fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
-#define cpu_monitor_LOGI(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_YELLOW  cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[I]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
-#define cpu_monitor_LOGW(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_CARMINE cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[W]: %s:%d [%s] "  fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
-#define cpu_monitor_LOGE(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_RED     cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[E]: %s:%d [%s] "  fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
-#define cpu_monitor_LOGF(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_CYAN    cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[!]: %s:%d [%s] "  fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); cpu_monitor_LOG_EXIT_PROGRAM(); } while(0) // NOLINT(bugprone-lambda-function-name)
+#define cpu_monitor_LOG(fmt, ...)           do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_GREEN   cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[*]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define cpu_monitor_LOGT(tag, fmt, ...)     do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_BLUE    cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[" tag "]: %s:%d " fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define cpu_monitor_LOGI(fmt, ...)          do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_YELLOW  cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[I]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define cpu_monitor_LOGW(fmt, ...)          do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_CARMINE cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[W]: %s:%d [%s] "  fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
+#define cpu_monitor_LOGE(fmt, ...)          do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_RED     cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[E]: %s:%d [%s] "  fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); } while(0)                     // NOLINT(bugprone-lambda-function-name)
+#define cpu_monitor_LOGF(fmt, ...)          do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_CYAN    cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[!]: %s:%d [%s] "  fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, __func__, ##__VA_ARGS__); cpu_monitor_LOG_EXIT_PROGRAM(); } while(0) // NOLINT(bugprone-lambda-function-name)
 
-#if defined(cpu_monitor_LOG_IN_LIB) && !defined(cpu_monitor_LOG_SHOW_DEBUG) && !defined(cpu_monitor_LOG_NDEBUG)
+#if defined(cpu_monitor_LOG_IN_LIB) && !defined(cpu_monitor_LOG_SHOW_DEBUG) && !defined(L_O_G_NDEBUG)
 #define cpu_monitor_LOG_NDEBUG
 #endif
 
-#if defined(NDEBUG) || defined(cpu_monitor_LOG_NDEBUG)
+#if defined(L_O_G_NDEBUG) && !defined(cpu_monitor_LOG_NDEBUG)
+#define cpu_monitor_LOG_NDEBUG
+#endif
+
+#if (defined(NDEBUG) || defined(cpu_monitor_LOG_NDEBUG)) && !defined(L_O_G_SHOW_DEBUG)
 #define cpu_monitor_LOGD(fmt, ...)          ((void)0)
 #else
-#define cpu_monitor_LOGD(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_DEFAULT cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[D]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define cpu_monitor_LOGD(fmt, ...)          do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_DEFAULT cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[D]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
 #endif
 
 #if defined(cpu_monitor_LOG_SHOW_VERBOSE)
-#define cpu_monitor_LOGV(fmt, ...)          do{ cpu_monitor_LOG_PRINTF_IMPL(cpu_monitor_LOG_COLOR_DEFAULT cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[V]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
+#define cpu_monitor_LOGV(fmt, ...)          do{ L_O_G_PRINTF(cpu_monitor_LOG_COLOR_DEFAULT cpu_monitor_LOG_TIME_LABEL cpu_monitor_LOG_THREAD_LABEL "[V]: %s:%d "       fmt cpu_monitor_LOG_END cpu_monitor_LOG_TIME_VALUE cpu_monitor_LOG_THREAD_VALUE, cpu_monitor_LOG_BASE_FILENAME, __LINE__, ##__VA_ARGS__); } while(0)
 #else
 #define cpu_monitor_LOGV(fmt, ...)          ((void)0)
 #endif
