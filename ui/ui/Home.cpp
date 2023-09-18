@@ -5,12 +5,11 @@
 
 #include "App.h"
 #include "Common.h"
-#include "Shell.hpp"
 #include "Types.h"
+#include "asio_net/rpc_client.hpp"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
-#include "rpc_client.hpp"
 
 using namespace cpu_monitor;
 
@@ -140,7 +139,8 @@ static void initRpcTask() {
 }
 
 static void initClient() {
-  s_rpc_client = std::make_unique<asio_net::rpc_client>(App::instance()->context(), MessageMaxByteSize);
+  using namespace asio_net;
+  s_rpc_client = std::make_unique<rpc_client>(App::instance()->context(), rpc_config{.max_body_size = MessageMaxByteSize});
   auto& client = s_rpc_client;
   client->on_open = [](std::shared_ptr<rpc_core::rpc> rpc) {
     LOGI("on_open");

@@ -10,8 +10,8 @@
 #include "TaskMonitor.h"
 #include "Utils.h"
 #include "asio.hpp"
+#include "asio_net/rpc_server.hpp"
 #include "log.h"
-#include "rpc_server.hpp"
 #include "utils/string_utils.h"
 #include "utils/time_utils.h"
 
@@ -213,7 +213,7 @@ static void sendNowCpuInfos() {
 
 static void runServer() {
   using namespace asio_net;
-  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, MessageMaxByteSize);
+  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, rpc_config{.max_body_size = MessageMaxByteSize});
   auto& server = s_rpc_server;
   server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
     LOGD("on_session");

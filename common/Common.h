@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "src/serialize.hpp"
+#include "rpc_core/serialize.hpp"
 
 namespace cpu_monitor {
 
