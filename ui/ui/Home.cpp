@@ -99,7 +99,8 @@ static void createTestData() {
   }
 }
 
-static void initRpcTask() {
+static void initRpc() {
+  s_rpc = rpc_core::rpc::create();
   s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsg msg) {
     if (s_show_testing) {
       s_show_testing = false;
@@ -133,26 +134,23 @@ static void initRpcTask() {
 
       // mem info
       auto& memInfos = processValue.memInfos;
-      memInfos.push_back(std::move(pInfo.mem_info));
+      memInfos.push_back(pInfo.mem_info);
     }
   });
 }
 
 static void initClient() {
   using namespace asio_net;
-  s_rpc_client = std::make_unique<rpc_client>(App::instance()->context(), rpc_config{.max_body_size = MessageMaxByteSize});
+  s_rpc_client = std::make_unique<rpc_client>(App::instance()->context(), rpc_config{.rpc = s_rpc, .max_body_size = MessageMaxByteSize});
   auto& client = s_rpc_client;
-  client->on_open = [](std::shared_ptr<rpc_core::rpc> rpc) {
+  client->on_open = [](const std::shared_ptr<rpc_core::rpc>& rpc) {
     LOGI("on_open");
-    s_rpc = std::move(rpc);
-    initRpcTask();
   };
   client->on_open_failed = [](const std::error_code& ec) {
     LOGI("on_open_failed: %s", ec.message().c_str());
   };
   client->on_close = [] {
     LOGI("on_close");
-    s_rpc = nullptr;
   };
   client->set_reconnect(1000);
 }
@@ -500,6 +498,7 @@ void Home::initGUI() {
 
 Home::Home() {
   initGUI();
+  initRpc();
   initClient();
 }
 

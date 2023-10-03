@@ -3,9 +3,16 @@ cmake_minimum_required(VERSION 3.16)
 project(cpu_monitor)
 
 option(BUILD_UI "" ON)
+option(MSG_SERIALIZE_USE_JSON "" OFF)
 
 set(CMAKE_CXX_STANDARD 14)
 add_compile_options(-Wall)
+
+include_directories(thirdparty)
+
+if (MSG_SERIALIZE_USE_JSON)
+    add_definitions(-DMSG_SERIALIZE_USE_JSON)
+endif ()
 
 # common
 add_subdirectory(common)
