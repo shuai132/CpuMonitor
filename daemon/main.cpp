@@ -65,6 +65,7 @@ static bool addMonitorPidByName(const std::string& name);
 
 static void initRpcTask() {
   using namespace rpc_core;
+  s_rpc = rpc::create();
 
   s_rpc->subscribe("add_pid", [](const std::string& pid) -> std::string {
     LOGD("add_pid: %s", pid.c_str());
@@ -193,7 +194,7 @@ static void sendNowCpuInfos() {
         mem.hwm = memUsage.VmHWM;
         mem.rss = memUsage.VmRSS;
         mem.timestamps = timestampsNow;
-        processInfo.mem_info = std::move(mem);
+        processInfo.mem_info = mem;
       }
 
       for (const auto& task : tasks) {
@@ -212,28 +213,14 @@ static void sendNowCpuInfos() {
 }
 
 static void runServer() {
+  initRpcTask();
   using namespace asio_net;
-  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, rpc_config{.max_body_size = MessageMaxByteSize});
-  auto& server = s_rpc_server;
-  server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
+  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, rpc_config{.rpc = s_rpc, .max_body_size = MessageMaxByteSize});
+  s_rpc_server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
     LOGD("on_session");
-    if (s_rpc) {
-      ws.lock()->close();
-      return;
-    }
-
-    auto session = ws.lock();
-    session->on_close = [] {
-      LOGD("session: on_close");
-      s_rpc = nullptr;
-    };
-
-    s_rpc = session->rpc;
-    initRpcTask();
   };
-
   LOGI("start server: port: %d", s_argv.s_server_port);
-  server->start(true);
+  s_rpc_server->start(true);
 }
 
 static void updateCpu() {
