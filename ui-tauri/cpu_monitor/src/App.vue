@@ -1,39 +1,53 @@
 <script setup lang="ts">
-import {ref} from "vue";
 import {onMounted, onUnmounted} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
 import {listen} from "@tauri-apps/api/event";
 import * as echarts from 'echarts';
-import {EChartsType} from "echarts";
 
-let myChart: undefined | EChartsType = undefined;
-const cpuJson = ref("");
-const processJson = ref("");
+let chartCpuAve: undefined | echarts.EChartsType = undefined;
+let chartCpuCores: undefined | echarts.EChartsType = undefined;
 
 let listen_list: any[] = [];
 let cpu_msg_list: any[] = [];
-let cpu_msg_list_v: any[] = [];
 let process_msg_list: any[] = [];
 
 const initListen = () => {
   invoke('init_process');
 
   let un_listen = listen('on_cpu_msg', (event: any) => {
-    console.log("wtf0: ", event)
     const json = event.payload.toString();
-    cpuJson.value = json;
-    console.log("wtf1: ", json)
     const jsonObject = JSON.parse(json);
-    console.log("wtf2: ", jsonObject)
     cpu_msg_list.push(jsonObject);
-    cpu_msg_list_v.push(jsonObject["ave"]["usage"]);
-    myChart?.setOption({
+
+    // ave charts
+    chartCpuAve?.setOption({
+      xAxis: {
+        data: cpu_msg_list.map(value => new Date(value["ave"]["timestamps"])),
+      },
       series: [
         {
-          data: cpu_msg_list_v,
+          data: cpu_msg_list.map(value => value["ave"]["usage"]),
         }
       ]
     });
+
+    // cores charts
+    {
+      let option = {
+        xAxis: {
+          data: cpu_msg_list.map(value => new Date(value["ave"]["timestamps"])),
+        },
+        series: [] as any[],
+      };
+      cpu_msg_list[0]["cores"].forEach((_: any, i) => {
+        option.series.push({
+          type: 'line',
+          smooth: true,
+          data: cpu_msg_list.map(value => value["cores"][i]["usage"]),
+        });
+      });
+      chartCpuCores?.setOption(option);
+    }
   });
   listen_list.push(un_listen);
 
@@ -47,28 +61,47 @@ const initListen = () => {
 }
 
 const initCharts = () => {
-  const chartDom = document.getElementById('chart');
-  myChart = echarts.init(chartDom);
-  let option = {
-    xAxis: {
-      type: 'category'
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        data: cpu_msg_list_v,
-        type: 'line',
-        smooth: true
-      }
-    ]
-  };
-
-  myChart.setOption(option);
+  const chartDomCpuAve = document.getElementById('chart-cpu-ave');
+  const chartDomCpuCore = document.getElementById('chart-cpu-cores');
+  chartCpuAve = echarts.init(chartDomCpuAve);
+  chartCpuCores = echarts.init(chartDomCpuCore);
   window.onresize = () => {
-    myChart?.resize()
+    chartCpuAve?.resize()
+    chartCpuCores?.resize()
   };
+  {
+    let option = {
+      xAxis: {
+        type: 'category'
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+        {
+          type: 'line',
+          smooth: true,
+          areaStyle: {}
+        }
+      ],
+      animation: false,
+    };
+
+    chartCpuAve.setOption(option);
+  }
+  {
+    let option = {
+      xAxis: {
+        type: 'category'
+      },
+      yAxis: {
+        type: 'value'
+      },
+      animation: false,
+    };
+
+    chartCpuCores.setOption(option);
+  }
 }
 
 onMounted(() => {
@@ -84,7 +117,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="chart" style="display: flex; height: 300px"></div>
-  <p>on_cpu_msg: {{ cpuJson }}</p>
-  <p>on_process_msg: {{ processJson }}</p>
+  <div id="chart-cpu-ave" style="display: flex; height: 280px"></div>
+  <div id="chart-cpu-cores" style="display: flex; height: 280px"></div>
 </template>
