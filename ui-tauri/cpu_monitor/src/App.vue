@@ -21,39 +21,34 @@ const initListen = () => {
 
     // ave charts
     chartCpuAve?.setOption({
-      xAxis: {
-        data: cpu_msg_list.map(value => new Date(value["ave"]["timestamps"])),
-      },
       series: [
         {
-          data: cpu_msg_list.map(value => value["ave"]["usage"]),
+          data: cpu_msg_list.map(value => {
+            const item = value["ave"];
+            return [new Date(item["timestamps"]), item["usage"]]
+          }),
         }
       ]
     });
 
     // cores charts
     {
-      let option = {
-        xAxis: {
-          data: cpu_msg_list.map(value => new Date(value["ave"]["timestamps"])),
-        },
-        series: [] as any[],
-      };
-      cpu_msg_list[0]["cores"].forEach((_: any, i) => {
-        option.series.push({
+      chartCpuCores?.setOption({
+        series: cpu_msg_list[0]["cores"].map((_: any, i: any) => ({
           type: 'line',
           smooth: true,
-          data: cpu_msg_list.map(value => value["cores"][i]["usage"]),
-        });
+          data: cpu_msg_list.map(value => {
+            const item = value["cores"][i];
+            return [new Date(item["timestamps"]), item["usage"]];
+          }),
+        }))
       });
-      chartCpuCores?.setOption(option);
     }
   });
   listen_list.push(un_listen);
 
   un_listen = listen('on_process_msg', (event: any) => {
     const json = event.payload.toString();
-    processJson.value = json;
     const jsonObject = JSON.parse(json);
     process_msg_list.push(jsonObject);
   });
@@ -72,7 +67,7 @@ const initCharts = () => {
   {
     let option = {
       xAxis: {
-        type: 'category'
+        type: 'time'
       },
       yAxis: {
         type: 'value'
@@ -92,7 +87,7 @@ const initCharts = () => {
   {
     let option = {
       xAxis: {
-        type: 'category'
+        type: 'time'
       },
       yAxis: {
         type: 'value'
