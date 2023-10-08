@@ -4,8 +4,8 @@ import {invoke} from "@tauri-apps/api/tauri";
 import {listen} from "@tauri-apps/api/event";
 import * as echarts from 'echarts';
 
-let chartCpuAve: undefined | echarts.EChartsType = undefined;
-let chartCpuCores: undefined | echarts.EChartsType = undefined;
+let chartCpuAve: echarts.EChartsType;
+let chartCpuCores: echarts.EChartsType;
 
 let listen_list: any[] = [];
 let cpu_msg_list: any[] = [];
@@ -20,28 +20,35 @@ const initListen = () => {
     cpu_msg_list.push(jsonObject);
 
     // ave charts
-    chartCpuAve?.setOption({
+    chartCpuAve.setOption({
       series: [
         {
           data: cpu_msg_list.map(value => {
             const item = value["ave"];
             return [new Date(item["timestamps"]), item["usage"]]
           }),
+          showSymbol: false,
         }
       ]
     });
 
     // cores charts
     {
-      chartCpuCores?.setOption({
-        series: cpu_msg_list[0]["cores"].map((_: any, i: any) => ({
+      chartCpuCores.setOption({
+        legend: {
+          data: cpu_msg_list[0]["cores"].map((item: any) => item["name"]),
+          top: 26,
+        },
+        series: cpu_msg_list[0]["cores"].map((item: any, i: any) => ({
           type: 'line',
           smooth: true,
           data: cpu_msg_list.map(value => {
             const item = value["cores"][i];
             return [new Date(item["timestamps"]), item["usage"]];
           }),
-        }))
+          name: item["name"],
+          showSymbol: false,
+        })),
       });
     }
   });
@@ -61,42 +68,86 @@ const initCharts = () => {
   chartCpuAve = echarts.init(chartDomCpuAve);
   chartCpuCores = echarts.init(chartDomCpuCore);
   window.onresize = () => {
-    chartCpuAve?.resize()
-    chartCpuCores?.resize()
+    chartCpuAve.resize()
+    chartCpuCores.resize()
   };
-  {
-    let option = {
-      xAxis: {
-        type: 'time'
+  const dataZoomOption = [
+    {
+      show: true,
+      realtime: true,
+      start: 0,
+      end: 100,
+    },
+    {
+      type: 'inside',
+      realtime: true,
+      start: 0,
+      end: 100,
+    }
+  ];
+  chartCpuAve.setOption({
+    title: {
+      text: 'Cpu Ave Usages',
+      textStyle: {
+        fontSize: 15,
       },
-      yAxis: {
-        type: 'value'
+      left: 'center',
+    },
+    xAxis: {
+      type: 'time',
+    },
+    dataZoom: dataZoomOption,
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 100,
+      axisLabel: {
+        formatter: '{value}%'
+      }
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        animation: false,
       },
-      series: [
-        {
-          type: 'line',
-          smooth: true,
-          areaStyle: {}
-        }
-      ],
-      animation: false,
-    };
+      formatter: (p: any) => {
+        return p[0].data[1].toFixed(2) + "%";
+      }
+    },
+    series: [
+      {
+        type: 'line',
+        smooth: true,
+        areaStyle: {}
+      }
+    ],
+    animation: false,
+  });
 
-    chartCpuAve.setOption(option);
-  }
-  {
-    let option = {
-      xAxis: {
-        type: 'time'
+  chartCpuCores.setOption({
+    title: {
+      text: 'Cpu Cores Usages',
+      textStyle: {
+        fontSize: 15,
       },
-      yAxis: {
-        type: 'value'
-      },
-      animation: false,
-    };
-
-    chartCpuCores.setOption(option);
-  }
+      left: 'center',
+    },
+    xAxis: {
+      type: 'time'
+    },
+    dataZoom: dataZoomOption,
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 100,
+      axisLabel: {
+        formatter: '{value}%'
+      }
+    },
+    animation: false,
+  });
+  echarts.connect([chartCpuAve, chartCpuCores]);
 }
 
 onMounted(() => {
