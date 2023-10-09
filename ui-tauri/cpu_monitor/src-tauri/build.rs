@@ -7,6 +7,9 @@ fn main() {
         .include("../../../thirdparty/asio_net/include/asio_net/rpc_core/include")
         .include("../../../thirdparty/asio/asio/include")
         .include("../../../thirdparty/asio_net/test")
+        .include("../../../thirdparty")
+        .include("../../../common")
+        .define("MSG_SERIALIZE_SUPPORT_TO_JSON", None)
         .flag("-std=c++14")
         .build("src/main.rs");
 }

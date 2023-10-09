@@ -4,12 +4,19 @@
 
 #include "rpc_core/serialize.hpp"
 
-//#define MSG_SERIALIZE_USE_JSON
+// #define MSG_SERIALIZE_USE_JSON
 #ifdef MSG_SERIALIZE_USE_JSON
 #include "rpc_core/plugin/json_msg.hpp"
 #define MSG_SERIALIZE_DEFINE(...) RPC_CORE_DEFINE_TYPE_JSON(__VA_ARGS__)
 #else
-#define MSG_SERIALIZE_DEFINE(...) RPC_CORE_DEFINE_TYPE(__VA_ARGS__)
+#ifdef MSG_SERIALIZE_SUPPORT_TO_JSON
+#include "nlohmann/json.hpp"
+#define MSG_SERIALIZE_DEFINE(Type, ...)   \
+  RPC_CORE_DEFINE_TYPE(Type, __VA_ARGS__) \
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Type, __VA_ARGS__)
+#else
+#define MSG_SERIALIZE_DEFINE(Type, ...) RPC_CORE_DEFINE_TYPE(Type, __VA_ARGS__)
+#endif
 #endif
 
 namespace cpu_monitor {

@@ -34,7 +34,7 @@ link_libraries(imgui)
 target_compile_definitions(imgui PUBLIC
         -DIMGUI_USER_CONFIG=\"${CMAKE_CURRENT_LIST_DIR}/imconfig.h\"
         -DIMGUI_DISABLE_INCLUDE_IMCONFIG_H
-        )
+)
 
 # implot
 include_directories(../thirdparty/implot)
@@ -42,7 +42,7 @@ set(SRCS_IMPLOT
         ../thirdparty/implot/implot.cpp
         ../thirdparty/implot/implot_demo.cpp
         ../thirdparty/implot/implot_items.cpp
-        )
+)
 
 if (MINGW)
     link_libraries(ws2_32)
@@ -63,3 +63,4 @@ include_directories(
 file(GLOB_RECURSE SRCS *.cpp)
 add_executable(${PROJECT_NAME} ${BUILD_AS_APP} ${SRCS} ${SRCS_IMPLOT})
 target_link_libraries(${PROJECT_NAME} pthread cpu_monitor_common)
+target_compile_definitions(${PROJECT_NAME} PRIVATE MSG_SERIALIZE_SUPPORT_TO_JSON)
