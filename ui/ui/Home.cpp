@@ -1,7 +1,6 @@
 #include "Home.h"
 
-#include <cmath>
-#include <list>
+#include <utility>
 
 #include "App.h"
 #include "Common.h"
@@ -10,6 +9,14 @@
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
+
+// msg data
+#include "MsgData.hpp"
+
+static MsgData s_msg;
+auto& s_msg_cpus = s_msg.msg_cpus;
+auto& s_msg_pids = s_msg.msg_pids;
+auto& s_pid_current_thread_num = s_msg.pid_current_thread_num;
 
 using namespace cpu_monitor;
 
@@ -20,6 +27,7 @@ bool showCpuAve = true;
 bool showCpuCores = true;
 bool showCpu = true;
 bool showMem = true;
+bool s_show_testing = false;
 std::string serverAddr = "10.238.21.156";  // NOLINT
 std::string serverPort = "8088";           // NOLINT
 }  // namespace flag
@@ -29,113 +37,18 @@ std::string serverPort = "8088";           // NOLINT
 static std::unique_ptr<asio_net::rpc_client> s_rpc_client;
 static std::shared_ptr<rpc_core::rpc> s_rpc;
 
-static std::vector<msg::CpuMsg> s_msg_cpus;
-
-struct ProcessKey {
-  PID_t pid;
-  std::string name;
-
-  friend inline bool operator<(const ProcessKey& a, const ProcessKey& b) {
-    return a.pid < b.pid;
-  }
-};
-
-using ThreadInfosType = std::vector<msg::ThreadInfo>;
-
-struct ThreadInfoKey {
-  ThreadInfoKey(TaskId_t id) : id(id) {}  // NOLINT
-  ThreadInfoKey(TaskId_t id, double usageSum) : id(id), usageSum(usageSum) {}
-  TaskId_t id;
-  double usageSum = 0;
-  friend inline bool operator<(const ThreadInfoKey& a, const ThreadInfoKey& b) {
-    return a.usageSum > b.usageSum;
-  }
-};
-
-struct ProcessValue {
-  struct ThreadInfoItem {
-    ThreadInfoKey key;
-    ThreadInfosType cpuInfos;
-    friend inline bool operator<(const ThreadInfoItem& a, const ThreadInfoItem& b) {
-      return a.key < b.key;
-    }
-  };
-  std::list<ThreadInfoItem> threadInfos;
-
-  std::vector<msg::MemInfo> memInfos;
-};
-
-static std::map<ProcessKey, ProcessValue> s_msg_pids;
-static std::map<PID_t, uint32_t> s_pid_current_thread_num;
-
-static bool s_show_testing = false;
-
-static void cleanData() {
-  s_msg_cpus.clear();
-  s_msg_pids.clear();
-  s_pid_current_thread_num.clear();
-}
-
-static void createTestData() {
-  s_show_testing = true;
-  cleanData();
-  for (int i = 0; i < 1000; ++i) {
-    // cpu
-    {
-      msg::CpuMsg msg;
-      msg.timestamps = i;
-      msg.ave.name = "cpu";
-      msg.ave.usage = (sin((float)i / 10) + 1) * 50;
-
-      for (int j = 0; j < 4; ++j) {
-        msg::CpuInfo c;
-        c.name = "cpu" + std::to_string(j);
-        c.usage = (sin((float)(i + j * 10) / 10) + 1) * 50;
-        c.timestamps = i;
-        msg.cores.push_back(std::move(c));
-      }
-      s_msg_cpus.push_back(std::move(msg));
-    }
-  }
-}
-
 static void initRpc() {
   s_rpc = rpc_core::rpc::create();
   s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsg msg) {
-    if (s_show_testing) {
-      s_show_testing = false;
-      cleanData();
+    if (ui::flag::s_show_testing) {
+      ui::flag::s_show_testing = false;
+      s_msg.clear();
     }
-    s_msg_cpus.push_back(std::move(msg));
+    s_msg.process(std::move(msg));
   });
 
   s_rpc->subscribe("on_process_msg", [](msg::ProcessMsg msg) {
-    auto& processMsg = msg;
-    for (auto& pInfo : processMsg.infos) {
-      auto& processValue = s_msg_pids[{(PID_t)pInfo.id, pInfo.name}];
-      auto& threadInfos = processValue.threadInfos;
-      s_pid_current_thread_num[pInfo.id] = pInfo.thread_infos.size();
-      // thread info
-      for (auto& item : pInfo.thread_infos) {
-        auto iter = std::find_if(threadInfos.begin(), threadInfos.end(), [&](auto& v) {
-          return v.key.id == item.id;
-        });
-        if (iter != threadInfos.cend()) {
-          iter->key.usageSum += item.usage;
-          iter->cpuInfos.push_back(std::move(item));
-        } else {
-          ThreadInfoKey key{(TaskId_t)item.id, item.usage};
-          ThreadInfosType value;
-          value.push_back(std::move(item));
-          threadInfos.push_back(ProcessValue::ThreadInfoItem{key, std::move(value)});
-        }
-      }
-      threadInfos.sort();
-
-      // mem info
-      auto& memInfos = processValue.memInfos;
-      memInfos.push_back(pInfo.mem_info);
-    }
+    s_msg.process(std::move(msg));
   });
 }
 
@@ -308,12 +221,13 @@ void Home::onDraw() {
 
   ImGui::SameLine();
   if (ImGui::Button("Clear")) {
-    cleanData();
+    s_msg.clear();
   }
 
   ImGui::SameLine();
   if (ImGui::Button("Test") && !s_rpc) {
-    createTestData();
+    ui::flag::s_show_testing = true;
+    s_msg.createTestData();
   }
 
   /*
