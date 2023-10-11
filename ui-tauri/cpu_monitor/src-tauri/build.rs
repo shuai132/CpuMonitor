@@ -9,6 +9,8 @@ fn main() {
         .include("../../../thirdparty/asio_net/test")
         .include("../../../thirdparty")
         .include("../../../common")
+        .include("../../../ui")
+        .include("../../../ui/ui")
         .define("MSG_SERIALIZE_SUPPORT_TO_JSON", None)
         .flag("-std=c++14")
         .build("src/main.rs");
