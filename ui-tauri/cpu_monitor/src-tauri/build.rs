@@ -1,5 +1,6 @@
 extern crate cpp_build;
 
+
 fn main() {
     tauri_build::build();
     println!("cargo:rerun-if-changed=src/main.rs");
@@ -12,6 +13,10 @@ fn main() {
         .include("../../../ui")
         .include("../../../ui/ui")
         .define("MSG_SERIALIZE_SUPPORT_TO_JSON", None)
-        .flag("-std=c++14")
+        .flag(if cfg!(target_os = "windows") {
+            "/std:c++14"
+        } else {
+            "-std=c++14"
+        })
         .build("src/main.rs");
 }
