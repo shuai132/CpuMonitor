@@ -71,7 +71,12 @@ const updateProcessCharts = () => {
     // cpu
     {
       const chartDom = document.getElementById('chart-process-cpu-' + item[0]['pid']);
-      let chart: echarts.EChartsType = echarts.init(chartDom);
+      if (!chartDom) return;
+      let chart: echarts.EChartsType | undefined = echarts.getInstanceByDom(chartDom);
+      if (!chart) {
+        chart = echarts.init(chartDom);
+      }
+
       cpuChart = chart;
       chartCpuAndMem.push(chart);
       const dataZoomOption = [
@@ -86,6 +91,7 @@ const updateProcessCharts = () => {
           realtime: true,
           start: 0,
           end: 100,
+          zoomLock: true,
         }
       ];
       chart.setOption({
@@ -113,6 +119,7 @@ const updateProcessCharts = () => {
         legend: {
           data: item[1]["threadInfos"].map((item: any) => item["key"]["id"]),
           top: 26,
+          width: "80%",
         },
         series: item[1]["threadInfos"].map((item: any, _: any) => ({
           type: 'line',
@@ -129,7 +136,12 @@ const updateProcessCharts = () => {
     // mem
     {
       const chartDom = document.getElementById('chart-process-mem-' + item[0]['pid']);
-      let chart: echarts.EChartsType = echarts.init(chartDom);
+      if (!chartDom) return;
+      let chart: echarts.EChartsType | undefined = echarts.getInstanceByDom(chartDom);
+      if (!chart) {
+        chart = echarts.init(chartDom);
+      }
+
       memChart = chart;
       chartCpuAndMem.push(chart);
       const dataZoomOption = [
@@ -144,6 +156,7 @@ const updateProcessCharts = () => {
           realtime: true,
           start: 0,
           end: 100,
+          zoomLock: true,
         }
       ];
       chart.setOption({
@@ -169,6 +182,7 @@ const updateProcessCharts = () => {
         legend: {
           data: ["VmHWM", "VmRSS"],
           top: 26,
+          width: "80%",
         },
         tooltip: {
           trigger: 'axis',
@@ -177,7 +191,7 @@ const updateProcessCharts = () => {
             animation: false,
           },
           formatter: (p: any) => {
-            return (p[1].data[1] / 1024) + "MB"; // VmRSS
+            return (p[1].data[1] / 1024).toFixed(2) + "MB"; // VmRSS
           }
         },
         series: [
@@ -229,6 +243,7 @@ const initCharts = () => {
       realtime: true,
       start: 0,
       end: 100,
+      zoomLock: true,
     }
   ];
   chartCpuAve.setOption({
