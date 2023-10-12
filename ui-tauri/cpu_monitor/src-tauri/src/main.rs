@@ -3,7 +3,7 @@
 #![recursion_limit = "512"]
 
 use std::ffi::CStr;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 use cpp::cpp;
 use lazy_static::lazy_static;
@@ -96,12 +96,14 @@ fn main() {
         run_rpc();
     });
 
-    let close_rpc = || {
+    let rpc_thread = Arc::new(Mutex::new(Some(rpc_thread)));
+    let close_rpc = move || {
         unsafe {
             cpp!([]{
                 s_context.stop();
             })
         }
+        rpc_thread.lock().unwrap().take().unwrap().join().unwrap();
     };
 
     tauri::Builder::default()
@@ -116,6 +118,4 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-
-    rpc_thread.join().unwrap();
 }
