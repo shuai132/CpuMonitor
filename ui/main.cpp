@@ -104,6 +104,7 @@ int main(int, char**) {
       flags |= ImGuiWindowFlags_NoResize;
       flags |= ImGuiWindowFlags_NoCollapse;
       flags |= ImGuiWindowFlags_NoTitleBar;
+      flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
       return flags;
     }();
 

@@ -6,6 +6,7 @@
 #include "Common.h"
 #include "Types.h"
 #include "asio_net/rpc_client.hpp"
+#include "file_utils.h"
 #include "imgui.h"
 #include "implot.h"
 #include "log.h"
@@ -27,7 +28,9 @@ bool showCpuAve = true;
 bool showCpuCores = true;
 bool showCpu = true;
 bool showMem = true;
-bool s_show_testing = false;
+bool showTest = false;
+bool showLoadData = false;
+bool showSettings = false;
 std::string serverAddr = "10.238.21.156";  // NOLINT
 std::string serverPort = "8088";           // NOLINT
 }  // namespace flag
@@ -40,14 +43,14 @@ static std::shared_ptr<rpc_core::rpc> s_rpc;
 static void initRpc() {
   s_rpc = rpc_core::rpc::create();
   s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsg msg) {
-    if (ui::flag::s_show_testing) {
-      ui::flag::s_show_testing = false;
-      s_msg.clear();
-    }
+    if (ui::flag::showTest) return;
+    if (ui::flag::showLoadData) return;
     s_msg.process(std::move(msg));
   });
 
   s_rpc->subscribe("on_process_msg", [](msg::ProcessMsg msg) {
+    if (ui::flag::showTest) return;
+    if (ui::flag::showLoadData) return;
     s_msg.process(std::move(msg));
   });
 }
@@ -222,12 +225,74 @@ void Home::onDraw() {
   ImGui::SameLine();
   if (ImGui::Button("Clear")) {
     s_msg.clear();
+    ui::flag::showTest = false;
+    ui::flag::showLoadData = false;
   }
 
   ImGui::SameLine();
-  if (ImGui::Button("Test") && !s_rpc) {
-    ui::flag::s_show_testing = true;
+  if (ImGui::Button("Test")) {
+    ui::flag::showTest = true;
     s_msg.createTestData();
+  }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Settings##settings_btn")) {
+    ui::flag::showSettings = true;
+  }
+  static std::string error_msg;
+  error_msg.resize(128);
+  if (ui::flag::showSettings && ImGui::Begin("Settings##settings_window", &ui::flag::showSettings, ImGuiWindowFlags_NoCollapse)) {
+    ImGui::Text("Load/Save settings:");
+
+    {
+      static std::string load_file_path;
+      load_file_path.resize(128);
+      ImGui::InputText("##load_file_path", (char*)load_file_path.data(), load_file_path.size());
+      ImGui::SameLine();
+      if (ImGui::Button("Load")) {
+        bool ok;
+        size_t size;
+        auto file = file_utils::read_file(load_file_path.c_str(), &size, &ok);  // NOLINT(*-redundant-string-cstr)
+        if (ok) {
+          try {
+            s_msg = nlohmann::json::parse((char*)file.get(), (char*)file.get() + size).get<MsgData>();
+            ui::flag::showLoadData = true;
+            error_msg = "save success!";
+          } catch (std::exception& e) {
+            LOGE("error: %s", e.what());
+            error_msg = e.what();
+          }
+        } else {
+          LOGE("error: open failed!");
+          error_msg = "error: open failed!";
+        }
+      }
+    }
+    {
+      static std::string save_file_path;
+      save_file_path.resize(128);
+      ImGui::InputText("##save_file_path", (char*)save_file_path.data(), save_file_path.size());
+      ImGui::SameLine();
+      if (ImGui::Button("Save")) {
+        try {
+          auto json = nlohmann::json(s_msg).dump(2);
+          auto ok = file_utils::write_to_file(json.data(), json.size(), save_file_path.c_str());  // NOLINT(*-redundant-string-cstr)
+          if (!ok) {
+            error_msg = "save failed!";
+          } else {
+            error_msg = "save success!";
+          }
+        } catch (std::exception& e) {
+          LOGE("error: %s", e.what());
+          error_msg = e.what();
+        }
+      }
+    }
+    ImGui::Text("%s", error_msg.c_str());
+
+    ImGui::End();
+  } else {
+    ui::flag::showSettings = false;
   }
 
   /*
@@ -370,15 +435,22 @@ void Home::onDraw() {
         ImPlot::SetupAxes("Time(sec)", "Memory(MB)", axisFlags, ImPlotAxisFlags_AutoFit);
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_None);
 
+        char label_tmp[128];
+// #define CPUMONITOR_ENABLE_VMHWM
+#ifdef CPUMONITOR_ENABLE_VMHWM
+        snprintf(label_tmp, sizeof(label_tmp), "VmHWM: %.2fMB(%zuKB)", (float)memInfos->back().hwm / 1024, (size_t)memInfos->back().hwm);
         ImPlot::PlotLineG(
-            "VmHWM",
+            label_tmp,
             (ImPlotGetter)[](int idx, void* user_data) {
               auto& info = (*memInfos)[idx];
               return ImPlotPoint{calcTimestampsFromStart(info.timestamps), (float)info.hwm / 1024};
             },
             nullptr, (int)memInfos->size());
+#endif
+        snprintf(label_tmp, sizeof(label_tmp), "VmRSS: %.2fMB(%zuKB) MAX:%.2fMB", (float)memInfos->back().rss / 1024, (size_t)memInfos->back().rss,
+                 (float)msgPid.second.maxRss / 1024);
         ImPlot::PlotLineG(
-            "VmRSS",
+            label_tmp,
             (ImPlotGetter)[](int idx, void* user_data) {
               auto& info = (*memInfos)[idx];
               return ImPlotPoint{calcTimestampsFromStart(info.timestamps), (float)info.rss / 1024};

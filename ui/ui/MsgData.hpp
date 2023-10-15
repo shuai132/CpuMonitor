@@ -8,7 +8,7 @@
 using namespace cpu_monitor;
 
 struct ProcessKey {
-  PID_t pid;
+  PID_t pid = 0;
   std::string name;
   friend inline bool operator<(const ProcessKey& a, const ProcessKey& b) {
     return a.pid < b.pid;
@@ -41,13 +41,15 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ThreadInfoItem, key, cpuInfos);
 struct ProcessValue {
   std::list<ThreadInfoItem> threadInfos;
   std::vector<msg::MemInfo> memInfos;
+  uint64_t maxRss = 0;
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProcessValue, threadInfos, memInfos);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProcessValue, threadInfos, memInfos, maxRss);
 
 struct MsgData {
   std::vector<msg::CpuMsg> msg_cpus;
   std::map<ProcessKey, ProcessValue> msg_pids;
   std::map<PID_t, uint32_t> pid_current_thread_num;
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(MsgData, msg_cpus, msg_pids, pid_current_thread_num);
 
   void clear() {
     msg_cpus.clear();
@@ -104,8 +106,8 @@ struct MsgData {
       threadInfos.sort();
 
       // mem info
-      auto& memInfos = processValue.memInfos;
-      memInfos.push_back(pInfo.mem_info);
+      processValue.memInfos.push_back(pInfo.mem_info);
+      processValue.maxRss = std::max(processValue.maxRss, pInfo.mem_info.rss);
     }
   }
 };
