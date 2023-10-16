@@ -1,11 +1,12 @@
 #pragma once
 
+#include <cstdint>
 #include <fstream>
 #include <memory>
 
 namespace file_utils {
 
-inline std::shared_ptr<void> read_file(const std::string &file, size_t *size, bool *ok = nullptr) {
+inline std::shared_ptr<uint8_t> read_file(const std::string &file, size_t *size, bool *ok = nullptr) {
   std::ifstream ifs(file, std::ios::binary);
   if (!ifs) {
     if (ok != nullptr) {
@@ -21,7 +22,9 @@ inline std::shared_ptr<void> read_file(const std::string &file, size_t *size, bo
   ifs.seekg(0, std::ios::beg);
 
   // 申请数据缓存内存
-  std::shared_ptr<void> fileData(new char[*size]);
+  std::shared_ptr<uint8_t> fileData(new uint8_t[*size], [](uint8_t *p) {
+    delete[] p;
+  });
   char *ptr = reinterpret_cast<char *>(fileData.get());
 
   // 读取文件

@@ -257,7 +257,7 @@ void Home::onDraw() {
           try {
             s_msg = nlohmann::json::parse((char*)file.get(), (char*)file.get() + size).get<MsgData>();
             ui::flag::showLoadData = true;
-            error_msg = "save success!";
+            error_msg = "load success!";
           } catch (std::exception& e) {
             LOGE("error: %s", e.what());
             error_msg = e.what();

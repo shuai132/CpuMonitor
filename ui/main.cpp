@@ -123,9 +123,13 @@ int main(int, char**) {
 
     // fit scale by hidpi
     {
+#ifdef _WIN32
+      ImGui::SetWindowSize({(float)display_w, (float)display_h});
+#else
       float x_scale, y_scale;
       glfwGetWindowContentScale(window, &x_scale, &y_scale);
       ImGui::SetWindowSize({(float)display_w / x_scale, (float)display_h / y_scale});
+#endif
     }
 
     App::instance()->poll();
