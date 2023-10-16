@@ -215,7 +215,10 @@ static void sendNowCpuInfos() {
 static void runServer() {
   initRpcTask();
   using namespace asio_net;
-  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, rpc_config{.rpc = s_rpc, .max_body_size = MessageMaxByteSize});
+  rpc_config rpc_config;
+  rpc_config.rpc = s_rpc;
+  rpc_config.max_body_size = MessageMaxByteSize;
+  s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, std::move(rpc_config));
   s_rpc_server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
     LOGD("on_session");
   };
