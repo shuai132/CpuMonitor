@@ -57,7 +57,10 @@ static void initRpc() {
 
 static void initClient() {
   using namespace asio_net;
-  s_rpc_client = std::make_unique<rpc_client>(App::instance()->context(), rpc_config{.rpc = s_rpc, .max_body_size = MessageMaxByteSize});
+  rpc_config rpc_config;
+  rpc_config.rpc = s_rpc;
+  rpc_config.max_body_size = MessageMaxByteSize;
+  s_rpc_client = std::make_unique<rpc_client>(App::instance()->context(), rpc_config);
   auto& client = s_rpc_client;
   client->on_open = [](const std::shared_ptr<rpc_core::rpc>& rpc) {
     LOGI("on_open");

@@ -22,7 +22,6 @@ jobs:
       - name: CMake Build
         shell: powershell
         run: |
-          $env:path=$env:path.Replace("C:\Program Files\Git", "HIDE_GIT")
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=Release .. -G "MinGW Makefiles"
