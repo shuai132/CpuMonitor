@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.15)
 
 project(cpu_monitor)
 
@@ -22,7 +22,7 @@ if (BUILD_UI)
 endif ()
 
 if (WIN32)
-    message(WARNING "daemon not support WIN32 for now")
+    message(STATUS "daemon not support WIN32 for now!")
 else ()
     add_subdirectory(daemon)
 endif ()
