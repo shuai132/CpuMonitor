@@ -4,7 +4,7 @@
 
 #include "rpc_core/serialize.hpp"
 
-// #define MSG_SERIALIZE_USE_JSON
+#define MSG_SERIALIZE_USE_JSON
 #ifdef MSG_SERIALIZE_USE_JSON
 #include "rpc_core/plugin/json_msg.hpp"
 #define MSG_SERIALIZE_DEFINE(...) RPC_CORE_DEFINE_TYPE_JSON(__VA_ARGS__)

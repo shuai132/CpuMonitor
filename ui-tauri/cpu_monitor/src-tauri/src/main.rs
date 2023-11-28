@@ -1,108 +1,98 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![recursion_limit = "512"]
 
-use std::ffi::CStr;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
-use cpp::cpp;
+
 use lazy_static::lazy_static;
+use log::info;
+use rpc_core::rpc::Rpc;
+use rpc_core_net::config_builder;
+use rpc_core_net::rpc_client;
 use tauri::{Window, WindowEvent};
+use tokio::sync::Notify;
+
+mod msg;
+
+struct RpcWrap {
+    pub rpc: Rc<Rpc>,
+}
+
+unsafe impl Send for RpcWrap {}
 
 lazy_static! {
     static ref WINDOW: Mutex<Option<Window>> = Mutex::new(None);
+    static ref RPC: Mutex<Option<RpcWrap>> = Mutex::new(None);
+    static ref NOTIFY_CLOSE_RPC: Notify = Notify::new();
 }
 
 #[tauri::command]
 fn init_process(window: Window) {
     *WINDOW.lock().unwrap() = Some(window);
-    unsafe {
-        cpp!([]{
-            s_context.post([]{
-                s_msg.clear();
-            });
-        })
-    }
 }
 
 fn send_event(event: &str, json: &str) {
-    let w = (*WINDOW).lock().unwrap();
-    if w.is_some() {
-        w.clone().unwrap().emit(event, json).unwrap();
+    if let Some(w) = WINDOW.lock().unwrap().as_ref() {
+        w.emit(event, json).unwrap();
     }
 }
 
-cpp! {{
-    #include "asio_net/rpc_client.hpp"
-    #include "MsgData.hpp"
-    #include "Common.h"
-    #include "log.h"
-
-    static MsgData s_msg;
-    static std::shared_ptr<rpc_core::rpc> s_rpc;
-    static asio::io_context s_context;
-}}
-
-fn init_rpc() {
-    unsafe {
-        cpp!([]{
-            using namespace cpu_monitor;
-            s_rpc = rpc_core::rpc::create();
-            s_rpc->subscribe("on_cpu_msg", [](msg::CpuMsg msg) {
-                auto json = nlohmann::json(msg).dump(-1);
-                auto str = json.c_str();
-                rust!(_on_cpu_msg [str: *const i8 as "const char*"] {
-                    send_event("on_cpu_msg", CStr::from_ptr(str).to_str().unwrap());
-                });
-            });
-            s_rpc->subscribe("on_process_msg", [](msg::ProcessMsg msg) {
-                s_msg.process(std::move(msg));
-                auto msg_pids_json = nlohmann::json(s_msg.msg_pids).dump(-1);
-                auto str = msg_pids_json.c_str();
-                rust!(_on_process_msg [str: *const i8 as "const char*"] {
-                    send_event("on_process_msg", CStr::from_ptr(str).to_str().unwrap());
-                });
-            });
-        })
-    }
+#[allow(dead_code)]
+fn get_rpc() -> Option<Rc<Rpc>> {
+    RPC.lock().unwrap().as_ref().map_or(None, |r| Some(r.rpc.clone()))
 }
 
-fn run_rpc() {
-    unsafe {
-        cpp!([]{
-            LOG("run rpc...");
-            using namespace asio_net;
-            rpc_client client(s_context, rpc_config{.rpc = s_rpc});
-            client.on_open = [](const std::shared_ptr<rpc_core::rpc>& rpc) {
-                (void)rpc;
-                LOG("client on_open:");
-            };
-            client.on_open_failed = [](std::error_code ec) {
-                LOG("client on_open_failed: %d, %s", ec.value(), ec.message().c_str());
-            };
-            client.on_close = [] {
-                LOG("client on_close:");
-            };
-            client.set_reconnect(1000);
-            client.open("localhost", 8088);
-            client.run();
-        })
-    }
+async fn rpc_task_loop() {
+    let rpc = Rpc::new(None);
+    rpc.subscribe("on_cpu_msg", |msg: msg::CpuMsg| {
+        send_event("on_cpu_msg", serde_json::to_string(&msg).unwrap().as_str());
+    });
+    rpc.subscribe("on_process_msg", |msg: msg::ProcessMsg| {
+        send_event("on_process_msg", serde_json::to_string(&msg).unwrap().as_str());
+    });
+
+    *RPC.lock().unwrap() = Some(RpcWrap { rpc: rpc.clone() });
+
+    let config = config_builder::RpcConfigBuilder::new().rpc(Some(rpc)).build();
+    let rpc_client = rpc_client::RpcClient::new(config);
+    rpc_client.on_open(|_: Rc<Rpc>| {
+        info!("on_open");
+    });
+    rpc_client.on_open_failed(|e| {
+        info!("on_open_failed: {:?}", e);
+    });
+    rpc_client.on_close(|| {
+        info!("on_close");
+    });
+    rpc_client.set_reconnect(1000);
+    rpc_client.open("localhost", 8088);
+    info!("rpc running...");
+
+    NOTIFY_CLOSE_RPC.notified().await;
 }
 
 fn main() {
+    std::env::set_var("RUST_LOG", "trace");
+    env_logger::init();
+
     let rpc_thread = spawn(|| {
-        init_rpc();
-        run_rpc();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async {
+            let local = tokio::task::LocalSet::new();
+            local.run_until(async move {
+                rpc_task_loop().await;
+            }).await;
+        });
     });
 
     let rpc_thread = Arc::new(Mutex::new(Some(rpc_thread)));
     let close_rpc = move || {
-        unsafe {
-            cpp!([]{
-                s_context.stop();
-            })
-        }
+        NOTIFY_CLOSE_RPC.notify_one();
         rpc_thread.lock().unwrap().take().unwrap().join().unwrap();
     };
 
