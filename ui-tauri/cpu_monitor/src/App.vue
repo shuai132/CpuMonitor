@@ -175,14 +175,15 @@ const updateProcessCharts = () => {
         dataZoom: dataZoomOption,
         yAxis: {
           type: 'value',
-          min: 0,
+          min: 'dataMin',
+          max: 'dataMax',
           axisLabel: {
             formatter: '{value}KB'
           }
         },
         animation: false,
         legend: {
-          data: ["VmHWM", "VmRSS"],
+          data: ["VmRSS"],
           top: 26,
           width: "80%",
         },
@@ -193,19 +194,10 @@ const updateProcessCharts = () => {
             animation: false,
           },
           formatter: (p: any) => {
-            return (p[1].data[1] / 1024).toFixed(2) + "MB"; // VmRSS
+            return (p[0].data[1] / 1024).toFixed(2) + "MB"; // VmRSS
           }
         },
         series: [
-          {
-            type: 'line',
-            smooth: true,
-            data: item["memInfos"].map((value: any) => {
-              return [new Date(value["timestamps"]), value["hwm"]];
-            }),
-            name: "VmHWM",
-            showSymbol: false,
-          },
           {
             type: 'line',
             smooth: true,

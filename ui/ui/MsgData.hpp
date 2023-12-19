@@ -99,6 +99,7 @@ struct MsgData {
       std::sort(threadInfos.begin(), threadInfos.end());
 
       // mem info
+      processValue.name = pInfo.name;
       processValue.memInfos.push_back(pInfo.mem_info);
       processValue.maxRss = std::max(processValue.maxRss, pInfo.mem_info.rss);
     }

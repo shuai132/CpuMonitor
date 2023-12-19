@@ -108,6 +108,7 @@ impl MsgData {
 
             threadInfos.sort();
 
+            processValue.name = pInfo.name;
             processValue.maxRss = processValue.maxRss.max(pInfo.mem_info.rss);
             processValue.memInfos.push(pInfo.mem_info);
         }
