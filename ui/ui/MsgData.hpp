@@ -1,5 +1,4 @@
 #include <cmath>
-#include <list>
 
 #include "Common.h"
 #include "Types.h"
@@ -7,14 +6,7 @@
 
 using namespace cpu_monitor;
 
-struct ProcessKey {
-  PID_t pid = 0;
-  std::string name;
-  friend inline bool operator<(const ProcessKey& a, const ProcessKey& b) {
-    return a.pid < b.pid;
-  }
-};
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProcessKey, pid, name);
+using ProcessKey = PID_t;
 
 using ThreadInfosType = std::vector<msg::ThreadInfo>;
 
@@ -39,7 +31,8 @@ struct ThreadInfoItem {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ThreadInfoItem, key, cpuInfos);
 
 struct ProcessValue {
-  std::list<ThreadInfoItem> threadInfos;
+  std::string name;
+  std::vector<ThreadInfoItem> threadInfos;
   std::vector<msg::MemInfo> memInfos;
   uint64_t maxRss = 0;
 };
@@ -85,7 +78,7 @@ struct MsgData {
 
   void process(msg::ProcessMsg msg) {
     for (auto& pInfo : msg.infos) {
-      auto& processValue = msg_pids[{(PID_t)pInfo.id, pInfo.name}];
+      auto& processValue = msg_pids[pInfo.id];
       auto& threadInfos = processValue.threadInfos;
       pid_current_thread_num[pInfo.id] = pInfo.thread_infos.size();
       // thread info
@@ -103,7 +96,7 @@ struct MsgData {
           threadInfos.push_back(ThreadInfoItem{key, std::move(value)});
         }
       }
-      threadInfos.sort();
+      std::sort(threadInfos.begin(), threadInfos.end());
 
       // mem info
       processValue.memInfos.push_back(pInfo.mem_info);

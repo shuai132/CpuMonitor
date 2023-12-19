@@ -384,12 +384,13 @@ void Home::onDraw() {
   {
     for (const auto& msgPid : s_msg_pids) {
       auto& processKey = msgPid.first;
-      auto& threadInfoTable = msgPid.second.threadInfos;
+      auto& processValue = msgPid.second;
+      auto& threadInfoTable = processValue.threadInfos;
 
       // plot thread info
       if (ui::flag::showCpu) {
-        auto plotName = "pid: " + std::to_string(processKey.pid) + " name: " + processKey.name +
-                        " threads: " + std::to_string(s_pid_current_thread_num[processKey.pid]);
+        auto plotName = "pid: " + std::to_string(processKey) + " name: " + processValue.name +
+                        " threads: " + std::to_string(s_pid_current_thread_num[processKey]);
         if (!ImPlot::BeginPlot(plotName.c_str())) {
           break;
         }
@@ -424,7 +425,7 @@ void Home::onDraw() {
         const static decltype(msgPid.second.memInfos)* memInfos;
         memInfos = &(msgPid.second.memInfos);
 
-        auto plotName = "pid: " + std::to_string(processKey.pid) + " name: " + processKey.name + " Memory/MB";
+        auto plotName = "pid: " + std::to_string(processKey) + " name: " + processValue.name + " Memory/MB";
         if (!ImPlot::BeginPlot(plotName.c_str())) {
           break;
         }

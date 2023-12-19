@@ -8,17 +8,20 @@ let chartCpuAve: echarts.EChartsType;
 let chartCpuCores: echarts.EChartsType;
 let chartCpuAndMem: echarts.EChartsType[] = [];
 
+let msg_data: any;
+let cpu_msg_list: any[];
+let process_msg_map: any;
+
+let process_msg_map_ref = ref();
 let listen_list: any[] = [];
-let cpu_msg_list: any[] = [];
-let process_msg_list: any = ref();
 
 const initListen = () => {
   invoke('init_process');
 
-  let un_listen = listen('on_cpu_msg', (event: any) => {
+  let un_listen = listen('on_msg_data', (event: any) => {
     const json = event.payload.toString();
-    const jsonObject = JSON.parse(json);
-    cpu_msg_list.push(jsonObject);
+    msg_data = JSON.parse(json);
+    cpu_msg_list = msg_data["msg_cpus"];
 
     // ave charts
     chartCpuAve.setOption({
@@ -52,12 +55,8 @@ const initListen = () => {
         })),
       });
     }
-  });
-  listen_list.push(un_listen);
 
-  un_listen = listen('on_process_msg', (event: any) => {
-    const json = event.payload.toString();
-    process_msg_list.value = JSON.parse(json);
+    process_msg_map = msg_data["msg_pids"];
     updateProcessCharts();
   });
   listen_list.push(un_listen);
@@ -65,12 +64,15 @@ const initListen = () => {
 
 const updateProcessCharts = () => {
   chartCpuAndMem = [];
-  process_msg_list.value.forEach((item: any) => {
+  process_msg_map_ref.value = [];
+  for (let pid in process_msg_map) {
+    process_msg_map_ref.value.push(pid);
+    let item = process_msg_map[pid];
     let cpuChart;
     let memChart;
     // cpu
     {
-      const chartDom = document.getElementById('chart-process-cpu-' + item[0]['pid']);
+      const chartDom = document.getElementById('chart-process-cpu-' + pid);
       if (!chartDom) return;
       let chart: echarts.EChartsType | undefined = echarts.getInstanceByDom(chartDom);
       if (!chart) {
@@ -97,7 +99,7 @@ const updateProcessCharts = () => {
       chart.setOption({
         title: {
           // text: "cpu usages",
-          text: "name: " + item[0]['name'] + "  pid: " + item[0]['pid'],
+          text: "name: " + item['name'] + "  pid: " + pid,
           textStyle: {
             fontSize: 15,
           },
@@ -117,11 +119,11 @@ const updateProcessCharts = () => {
         },
         animation: false,
         legend: {
-          data: item[1]["threadInfos"].map((item: any) => item["key"]["id"]),
+          data: item["threadInfos"].map((item: any) => item["key"]["id"]),
           top: 26,
           width: "80%",
         },
-        series: item[1]["threadInfos"].map((item: any, _: any) => ({
+        series: item["threadInfos"].map((item: any, _: any) => ({
           type: 'line',
           smooth: true,
           data: item["cpuInfos"].map((item: any) => {
@@ -135,7 +137,7 @@ const updateProcessCharts = () => {
 
     // mem
     {
-      const chartDom = document.getElementById('chart-process-mem-' + item[0]['pid']);
+      const chartDom = document.getElementById('chart-process-mem-' + pid);
       if (!chartDom) return;
       let chart: echarts.EChartsType | undefined = echarts.getInstanceByDom(chartDom);
       if (!chart) {
@@ -198,7 +200,7 @@ const updateProcessCharts = () => {
           {
             type: 'line',
             smooth: true,
-            data: item[1]["memInfos"].map((value: any) => {
+            data: item["memInfos"].map((value: any) => {
               return [new Date(value["timestamps"]), value["hwm"]];
             }),
             name: "VmHWM",
@@ -207,7 +209,7 @@ const updateProcessCharts = () => {
           {
             type: 'line',
             smooth: true,
-            data: item[1]["memInfos"].map((value: any) => {
+            data: item["memInfos"].map((value: any) => {
               return [new Date(value["timestamps"]), value["rss"]];
             }),
             name: "VmRSS",
@@ -218,7 +220,7 @@ const updateProcessCharts = () => {
     }
 
     echarts.connect([cpuChart, memChart]);
-  });
+  }
 };
 
 const initCharts = () => {
@@ -324,10 +326,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="chart-cpu-ave" style="display: flex; height: 280px"></div>
-  <div id="chart-cpu-cores" style="display: flex; height: 280px"></div>
-  <div v-for="item in process_msg_list">
-    <div :id="'chart-process-cpu-' + item[0]['pid']" style="display: flex; height: 280px"></div>
-    <div :id="'chart-process-mem-' + item[0]['pid']" style="display: flex; height: 280px"></div>
+  <div id="chart-cpu-ave" class="chart-view"></div>
+  <div id="chart-cpu-cores" class="chart-view"></div>
+  <div v-for="pid in process_msg_map_ref">
+    <div :id="'chart-process-cpu-' + pid" class="chart-view"></div>
+    <div :id="'chart-process-mem-' + pid" class="chart-view"></div>
   </div>
 </template>
+
+<style src="./App.css"></style>

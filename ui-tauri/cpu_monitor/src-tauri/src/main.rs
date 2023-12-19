@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
@@ -12,8 +13,10 @@ use rpc_core_net::config_builder;
 use rpc_core_net::rpc_client;
 use tauri::{Window, WindowEvent};
 use tokio::sync::Notify;
+use crate::msg_data::MsgData;
 
 mod msg;
+mod msg_data;
 
 struct RpcWrap {
     pub rpc: Rc<Rpc>,
@@ -45,11 +48,17 @@ fn get_rpc() -> Option<Rc<Rpc>> {
 
 async fn rpc_task_loop() {
     let rpc = Rpc::new(None);
-    rpc.subscribe("on_cpu_msg", |msg: msg::CpuMsg| {
-        send_event("on_cpu_msg", serde_json::to_string(&msg).unwrap().as_str());
+    let msg_data = Rc::new(RefCell::new(MsgData::default()));
+
+    let msg_data_clone = msg_data.clone();
+    rpc.subscribe("on_cpu_msg", move |msg: msg::CpuMsg| {
+        msg_data_clone.borrow_mut().process_cpu_msg(msg);
     });
-    rpc.subscribe("on_process_msg", |msg: msg::ProcessMsg| {
-        send_event("on_process_msg", serde_json::to_string(&msg).unwrap().as_str());
+
+    let msg_data_clone = msg_data.clone();
+    rpc.subscribe("on_process_msg", move |msg: msg::ProcessMsg| {
+        msg_data_clone.borrow_mut().process_process_msg(msg);
+        send_event("on_msg_data", serde_json::to_string(&*msg_data_clone).unwrap().as_str());
     });
 
     *RPC.lock().unwrap() = Some(RpcWrap { rpc: rpc.clone() });
@@ -73,7 +82,7 @@ async fn rpc_task_loop() {
 }
 
 fn main() {
-    std::env::set_var("RUST_LOG", "trace");
+    // std::env::set_var("RUST_LOG", "trace");
     env_logger::init();
 
     let rpc_thread = spawn(|| {
