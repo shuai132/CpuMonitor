@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import {onMounted, onUnmounted, ref} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
 import {listen} from "@tauri-apps/api/event";
@@ -14,6 +14,8 @@ let process_msg_map: any;
 
 let process_msg_map_ref = ref();
 let listen_list: any[] = [];
+
+let ui_config_smooth = false;
 
 const initListen = () => {
   invoke('init_process');
@@ -43,9 +45,16 @@ const initListen = () => {
           data: cpu_msg_list[0]["cores"].map((item: any) => item["name"]),
           top: 26,
         },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'cross',
+            animation: false,
+          },
+        },
         series: cpu_msg_list[0]["cores"].map((item: any, i: any) => ({
           type: 'line',
-          smooth: true,
+          smooth: ui_config_smooth,
           data: cpu_msg_list.map(value => {
             const item = value["cores"][i];
             return [new Date(item["timestamps"]), item["usage"]];
@@ -72,7 +81,7 @@ const updateProcessCharts = () => {
     let memChart;
     // cpu
     {
-      const chartDom = document.getElementById('chart-process-cpu-' + pid);
+      const chartDom = document.getElementById(`chart-process-cpu-${pid}`);
       if (!chartDom) return;
       let chart: echarts.EChartsType | undefined = echarts.getInstanceByDom(chartDom);
       if (!chart) {
@@ -99,7 +108,7 @@ const updateProcessCharts = () => {
       chart.setOption({
         title: {
           // text: "cpu usages",
-          text: item['name'] + "  pid: " + pid + "  threads: " + msg_data["pid_current_thread_num"][pid],
+          text: `${item['name']}  pid: ${pid}  threads: ${msg_data["pid_current_thread_num"][pid]}`,
           textStyle: {
             fontSize: 15,
           },
@@ -119,28 +128,36 @@ const updateProcessCharts = () => {
         },
         animation: false,
         legend: {
-          data: item["thread_infos"].map((item: any) => item["id"]),
           top: 26,
           width: "80%",
-          formatter: (item: any) => {
-            return item["id"];
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'cross',
+            animation: false,
           },
         },
-        series: item["thread_infos"].map((item: any, _: any) => ({
-          type: 'line',
-          smooth: true,
-          data: item["cpu_infos"].map((item: any) => {
-            return [new Date(item["timestamps"]), item["usage"]];
-          }),
-          name: item["id"],
-          showSymbol: false,
-        })),
+        series: item["thread_infos"].map((item: any, index: any) => {
+          if (index > 10) {
+            return {};
+          }
+          return {
+            type: 'line',
+            smooth: ui_config_smooth,
+            data: item["cpu_infos"].map((item: any) => {
+              return [new Date(item["timestamps"]), item["usage"]];
+            }),
+            name: `${item["id"]}: ${item["cpu_infos"][0]["name"]}`,
+            showSymbol: false,
+          };
+        }),
       });
     }
 
     // mem
     {
-      const chartDom = document.getElementById('chart-process-mem-' + pid);
+      const chartDom = document.getElementById(`chart-process-mem-${pid}`);
       if (!chartDom) return;
       let chart: echarts.EChartsType | undefined = echarts.getInstanceByDom(chartDom);
       if (!chart) {
@@ -186,7 +203,6 @@ const updateProcessCharts = () => {
         },
         animation: false,
         legend: {
-          data: ["VmRSS"],
           top: 26,
           width: "80%",
         },
@@ -197,17 +213,25 @@ const updateProcessCharts = () => {
             animation: false,
           },
           formatter: (p: any) => {
-            return (p[0].data[1] / 1024).toFixed(2) + "MB"; // VmRSS
+            let value = p[0].data[1];
+            let value_mb = (value / 1024).toFixed(2);
+            return `${value_mb}MB(${value}KB)`; // VmRSS
           }
         },
         series: [
           {
             type: 'line',
-            smooth: true,
+            smooth: ui_config_smooth,
             data: item["mem_infos"].map((value: any) => {
               return [new Date(value["timestamps"]), value["rss"]];
             }),
-            name: "VmRSS",
+            name: (() => {
+              let rss_now = item["mem_infos"].slice(-1)[0]["rss"];
+              let rss_now_mb = (rss_now / 1024).toFixed(2);
+              let rss_max = process_msg_map[pid]["max_rss"];
+              let rss_max_mb = (rss_max / 1024).toFixed(2);
+              return `VmRSS: ${rss_now_mb}MB(${rss_now}KB) MAX:${rss_max_mb}MB(${rss_max}KB)`;
+            })(),
             showSymbol: false,
           },
         ]
@@ -270,13 +294,13 @@ const initCharts = () => {
         animation: false,
       },
       formatter: (p: any) => {
-        return p[0].data[1].toFixed(2) + "%";
+        return `${p[0].data[1].toFixed(2)}%`;
       }
     },
     series: [
       {
         type: 'line',
-        smooth: true,
+        smooth: ui_config_smooth,
         areaStyle: {}
       }
     ],
@@ -324,8 +348,8 @@ onUnmounted(() => {
   <div id="chart-cpu-ave" class="chart-view"></div>
   <div id="chart-cpu-cores" class="chart-view"></div>
   <div v-for="pid in process_msg_map_ref">
-    <div :id="'chart-process-cpu-' + pid" class="chart-view"></div>
-    <div :id="'chart-process-mem-' + pid" class="chart-view"></div>
+    <div :id="`chart-process-cpu-${pid}`" class="chart-view"></div>
+    <div :id="`chart-process-mem-${pid}`" class="chart-view"></div>
   </div>
 </template>
 
