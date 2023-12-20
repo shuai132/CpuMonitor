@@ -385,7 +385,7 @@ void Home::onDraw() {
     for (const auto& msgPid : s_msg_pids) {
       auto& processKey = msgPid.first;
       auto& processValue = msgPid.second;
-      auto& threadInfoTable = processValue.threadInfos;
+      auto& threadInfoTable = processValue.thread_infos;
 
       // plot thread info
       if (ui::flag::showCpu) {
@@ -405,7 +405,7 @@ void Home::onDraw() {
         if (!threadInfoTable.empty()) {
           for (auto& item : threadInfoTable) {
             const static ThreadInfosType* threadInfos;
-            threadInfos = &(item.cpuInfos);
+            threadInfos = &(item.cpu_infos);
 
             auto labelName = std::string("tid: ") + std::to_string(threadInfos->front().id) + " name: " + threadInfos->front().name;
             ImPlot::PlotLineG(
@@ -422,8 +422,8 @@ void Home::onDraw() {
 
       // plot mem info
       if (ui::flag::showMem) {
-        const static decltype(msgPid.second.memInfos)* memInfos;
-        memInfos = &(msgPid.second.memInfos);
+        const static decltype(msgPid.second.mem_infos)* memInfos;
+        memInfos = &(msgPid.second.mem_infos);
 
         auto plotName = "pid: " + std::to_string(processKey) + " name: " + processValue.name + " Memory/MB";
         if (!ImPlot::BeginPlot(plotName.c_str())) {
@@ -452,7 +452,7 @@ void Home::onDraw() {
             nullptr, (int)memInfos->size());
 #endif
         snprintf(label_tmp, sizeof(label_tmp), "VmRSS: %.2fMB(%zuKB) MAX:%.2fMB", (float)memInfos->back().rss / 1024, (size_t)memInfos->back().rss,
-                 (float)msgPid.second.maxRss / 1024);
+                 (float)msgPid.second.max_rss / 1024);
         ImPlot::PlotLineG(
             label_tmp,
             (ImPlotGetter)[](int idx, void* user_data) {

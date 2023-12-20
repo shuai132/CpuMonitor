@@ -73,7 +73,9 @@ bool TaskMonitor::update() {
   auto totalThreadTicksNow = stat.calcTicksTotal();
   auto deltaThread = totalThreadTicksNow - totalThreadTime_;
   usage = deltaThread * 100.f / totalTimeImpl_();  // NOLINT
-
+  if (usage > 100) {                               // invalid data
+    usage = 0;
+  }
   totalThreadTime_ = totalThreadTicksNow;
   return true;
 }

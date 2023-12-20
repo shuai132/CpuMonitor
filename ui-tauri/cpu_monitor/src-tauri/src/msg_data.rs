@@ -2,8 +2,9 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
+
 use serde::{Deserialize, Serialize};
-use crate::msg;
+
 use crate::msg::*;
 
 type ProcessKey = u64;
@@ -11,41 +12,18 @@ type ProcessKey = u64;
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct ProcessValue {
     pub name: String,
-    pub threadInfos: Vec<ThreadInfoItem>,
-    pub memInfos: Vec<MemInfo>,
-    pub maxRss: u64,
+    pub thread_infos: Vec<ThreadInfoItem>,
+    pub mem_infos: Vec<MemInfo>,
+    pub max_rss: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct ThreadInfoKey {
-    pub id: u64,
-    pub usage: f64,
-}
+type ThreadInfoKey = u64;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ThreadInfoItem {
-    pub key: ThreadInfoKey,
-    pub cpuInfos: Vec<ThreadInfo>,
-}
-
-impl Eq for ThreadInfoItem {}
-
-impl PartialEq<Self> for ThreadInfoItem {
-    fn eq(&self, other: &Self) -> bool {
-        self.key.id.eq(&other.key.id)
-    }
-}
-
-impl PartialOrd<Self> for ThreadInfoItem {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.key.id.partial_cmp(&other.key.id)
-    }
-}
-
-impl Ord for ThreadInfoItem {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.key.id.cmp(&other.key.id)
-    }
+    pub id: ThreadInfoKey,
+    pub usage_sum: f64,
+    pub cpu_infos: Vec<ThreadInfo>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -89,28 +67,26 @@ impl MsgData {
     pub fn process_process_msg(&mut self, msg: ProcessMsg) {
         for pInfo in msg.infos {
             let processValue = self.msg_pids.entry(pInfo.id).or_insert(ProcessValue::default());
-            let threadInfos = &mut processValue.threadInfos;
+            let threadInfos = &mut processValue.thread_infos;
             self.pid_current_thread_num.insert(pInfo.id, pInfo.thread_infos.len() as u32);
 
             for item in pInfo.thread_infos {
-                if let Some(threadInfo) = threadInfos.iter_mut().find(|v| v.key.id == item.id) {
-                    threadInfo.key.usage += item.usage;
-                    threadInfo.cpuInfos.push(item);
+                if let Some(threadInfo) = threadInfos.iter_mut().find(|v| v.id == item.id) {
+                    threadInfo.usage_sum += item.usage;
+                    threadInfo.cpu_infos.push(item);
                 } else {
-                    let key = ThreadInfoKey {
-                        id: item.id,
-                        usage: item.usage,
-                    };
+                    let id = item.id;
+                    let usage_sum = item.usage;
                     let value = vec![item];
-                    threadInfos.push(ThreadInfoItem { key, cpuInfos: value });
+                    threadInfos.push(ThreadInfoItem { id, usage_sum, cpu_infos: value });
                 }
             }
 
-            threadInfos.sort();
+            threadInfos.sort_unstable_by(|a, b| a.usage_sum.partial_cmp(&b.usage_sum).unwrap_or(Ordering::Equal).reverse());
 
             processValue.name = pInfo.name;
-            processValue.maxRss = processValue.maxRss.max(pInfo.mem_info.rss);
-            processValue.memInfos.push(pInfo.mem_info);
+            processValue.max_rss = processValue.max_rss.max(pInfo.mem_info.rss);
+            processValue.mem_infos.push(pInfo.mem_info);
         }
     }
 }

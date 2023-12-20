@@ -99,7 +99,7 @@ const updateProcessCharts = () => {
       chart.setOption({
         title: {
           // text: "cpu usages",
-          text: "name: " + item['name'] + "  pid: " + pid,
+          text: item['name'] + "  pid: " + pid + "  threads: " + msg_data["pid_current_thread_num"][pid],
           textStyle: {
             fontSize: 15,
           },
@@ -119,17 +119,20 @@ const updateProcessCharts = () => {
         },
         animation: false,
         legend: {
-          data: item["threadInfos"].map((item: any) => item["key"]["id"]),
+          data: item["thread_infos"].map((item: any) => item["id"]),
           top: 26,
           width: "80%",
+          formatter: (item: any) => {
+            return item["id"];
+          },
         },
-        series: item["threadInfos"].map((item: any, _: any) => ({
+        series: item["thread_infos"].map((item: any, _: any) => ({
           type: 'line',
           smooth: true,
-          data: item["cpuInfos"].map((item: any) => {
+          data: item["cpu_infos"].map((item: any) => {
             return [new Date(item["timestamps"]), item["usage"]];
           }),
-          name: item["key"]["id"],
+          name: item["id"],
           showSymbol: false,
         })),
       });
@@ -201,7 +204,7 @@ const updateProcessCharts = () => {
           {
             type: 'line',
             smooth: true,
-            data: item["memInfos"].map((value: any) => {
+            data: item["mem_infos"].map((value: any) => {
               return [new Date(value["timestamps"]), value["rss"]];
             }),
             name: "VmRSS",

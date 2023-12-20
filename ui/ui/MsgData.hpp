@@ -6,37 +6,23 @@
 
 using namespace cpu_monitor;
 
-using ProcessKey = PID_t;
-
+using ThreadInfoKey = TaskId_t;
 using ThreadInfosType = std::vector<msg::ThreadInfo>;
-
-struct ThreadInfoKey {
-  ThreadInfoKey() = default;
-  ThreadInfoKey(TaskId_t id, double usage_sum) : id(id), usage_sum(usage_sum) {}
-  TaskId_t id = 0;
-  double usage_sum = 0;
-  friend inline bool operator<(const ThreadInfoKey& a, const ThreadInfoKey& b) {
-    return a.usage_sum > b.usage_sum;
-  }
-};
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ThreadInfoKey, id, usage_sum);
-
 struct ThreadInfoItem {
-  ThreadInfoKey key;
-  ThreadInfosType cpuInfos;
-  friend inline bool operator<(const ThreadInfoItem& a, const ThreadInfoItem& b) {
-    return a.key < b.key;
-  }
+  ThreadInfoKey id = 0;
+  double usage_sum = 0;
+  ThreadInfosType cpu_infos;
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ThreadInfoItem, key, cpuInfos);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ThreadInfoItem, id, usage_sum, cpu_infos);
 
+using ProcessKey = PID_t;
 struct ProcessValue {
   std::string name;
-  std::vector<ThreadInfoItem> threadInfos;
-  std::vector<msg::MemInfo> memInfos;
-  uint64_t maxRss = 0;
+  std::vector<ThreadInfoItem> thread_infos;
+  std::vector<msg::MemInfo> mem_infos;
+  uint64_t max_rss = 0;
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProcessValue, threadInfos, memInfos, maxRss);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ProcessValue, thread_infos, mem_infos, max_rss);
 
 struct MsgData {
   std::vector<msg::CpuMsg> msg_cpus;
@@ -79,29 +65,31 @@ struct MsgData {
   void process(msg::ProcessMsg msg) {
     for (auto& pInfo : msg.infos) {
       auto& processValue = msg_pids[pInfo.id];
-      auto& threadInfos = processValue.threadInfos;
+      auto& threadInfos = processValue.thread_infos;
       pid_current_thread_num[pInfo.id] = pInfo.thread_infos.size();
       // thread info
       for (auto& item : pInfo.thread_infos) {
         auto iter = std::find_if(threadInfos.begin(), threadInfos.end(), [&](auto& v) {
-          return v.key.id == item.id;
+          return v.id == item.id;
         });
         if (iter != threadInfos.cend()) {
-          iter->key.usage_sum += item.usage;
-          iter->cpuInfos.push_back(std::move(item));
+          iter->usage_sum += item.usage;
+          iter->cpu_infos.push_back(std::move(item));
         } else {
-          ThreadInfoKey key{(TaskId_t)item.id, item.usage};
+          ThreadInfoKey key = item.id;
           ThreadInfosType value;
-          value.push_back(std::move(item));
-          threadInfos.push_back(ThreadInfoItem{key, std::move(value)});
+          value.push_back(item);
+          threadInfos.push_back(ThreadInfoItem{key, item.usage, std::move(value)});
         }
       }
-      std::sort(threadInfos.begin(), threadInfos.end());
+      std::sort(threadInfos.begin(), threadInfos.end(), [](auto& a, auto& b) {
+        return a.usage_sum > b.usage_sum;
+      });
 
       // mem info
       processValue.name = pInfo.name;
-      processValue.memInfos.push_back(pInfo.mem_info);
-      processValue.maxRss = std::max(processValue.maxRss, pInfo.mem_info.rss);
+      processValue.mem_infos.push_back(pInfo.mem_info);
+      processValue.max_rss = std::max(processValue.max_rss, pInfo.mem_info.rss);
     }
   }
 };

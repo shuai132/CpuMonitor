@@ -13,6 +13,7 @@ use rpc_core_net::config_builder;
 use rpc_core_net::rpc_client;
 use tauri::{Window, WindowEvent};
 use tokio::sync::Notify;
+
 use crate::msg_data::MsgData;
 
 mod msg;

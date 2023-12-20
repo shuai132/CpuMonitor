@@ -33,6 +33,9 @@ bool TaskMonitor::update() {
       name = name_tmp;
     }
     usage = (float)(cpu / TH_USAGE_SCALE * 100);
+    if (usage > 100) {  // invalid data
+      usage = 0;
+    }
   } else {
     return false;
   }
