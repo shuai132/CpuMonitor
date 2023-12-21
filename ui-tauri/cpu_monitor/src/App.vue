@@ -29,10 +29,13 @@ const initListen = () => {
     chartCpuAve.setOption({
       series: [
         {
+          type: 'line',
+          smooth: ui_config_smooth,
           data: cpu_msg_list.map(value => {
             const item = value["ave"];
-            return [new Date(item["timestamps"]), item["usage"]]
+            return [new Date(item["timestamps"]), item["usage"].toFixed(2)]
           }),
+          name: `ave: ${cpu_msg_list.slice(-1)[0]["ave"]["usage"].toFixed(2)}%`,
           showSymbol: false,
         }
       ]
@@ -41,25 +44,14 @@ const initListen = () => {
     // cores charts
     {
       chartCpuCores.setOption({
-        legend: {
-          data: cpu_msg_list[0]["cores"].map((item: any) => item["name"]),
-          top: 26,
-        },
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: {
-            type: 'cross',
-            animation: false,
-          },
-        },
-        series: cpu_msg_list[0]["cores"].map((item: any, i: any) => ({
+        series: cpu_msg_list.slice(-1)[0]["cores"].map((item: any, i: any) => ({
           type: 'line',
           smooth: ui_config_smooth,
           data: cpu_msg_list.map(value => {
             const item = value["cores"][i];
-            return [new Date(item["timestamps"]), item["usage"]];
+            return [new Date(item["timestamps"]), item["usage"].toFixed(2)];
           }),
-          name: item["name"],
+          name: `${item["name"]}: ${item["usage"].toFixed(2)}%`,
           showSymbol: false,
         })),
       });
@@ -124,12 +116,16 @@ const updateProcessCharts = () => {
           max: 100,
           axisLabel: {
             formatter: '{value}%'
-          }
+          },
         },
         animation: false,
         legend: {
           top: 26,
           width: "80%",
+          // need `data` for sort
+          data: item["thread_infos"].slice(0, 10).map((item: any, _: any) => {
+            return `${item["id"]}: ${item["cpu_infos"][0]["name"]}`;
+          }),
         },
         tooltip: {
           trigger: 'axis',
@@ -138,15 +134,12 @@ const updateProcessCharts = () => {
             animation: false,
           },
         },
-        series: item["thread_infos"].map((item: any, index: any) => {
-          if (index > 10) {
-            return {};
-          }
+        series: item["thread_infos"].slice(0, 10).map((item: any, _: any) => {
           return {
             type: 'line',
             smooth: ui_config_smooth,
             data: item["cpu_infos"].map((item: any) => {
-              return [new Date(item["timestamps"]), item["usage"]];
+              return [new Date(item["timestamps"]), item["usage"].toFixed(2)];
             }),
             name: `${item["id"]}: ${item["cpu_infos"][0]["name"]}`,
             showSymbol: false,
@@ -199,7 +192,7 @@ const updateProcessCharts = () => {
           max: 'dataMax',
           axisLabel: {
             formatter: '{value}KB'
-          }
+          },
         },
         animation: false,
         legend: {
@@ -285,7 +278,10 @@ const initCharts = () => {
       max: 100,
       axisLabel: {
         formatter: '{value}%'
-      }
+      },
+    },
+    legend: {
+      top: 26,
     },
     tooltip: {
       trigger: 'axis',
@@ -294,16 +290,9 @@ const initCharts = () => {
         animation: false,
       },
       formatter: (p: any) => {
-        return `${p[0].data[1].toFixed(2)}%`;
+        return `${p[0].data[1]}%`;
       }
     },
-    series: [
-      {
-        type: 'line',
-        smooth: ui_config_smooth,
-        areaStyle: {}
-      }
-    ],
     animation: false,
   });
 
@@ -325,6 +314,21 @@ const initCharts = () => {
       max: 100,
       axisLabel: {
         formatter: '{value}%'
+      },
+    },
+    legend: {
+      top: 26,
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        animation: false,
+      },
+      formatter: (p: any) => {
+        return p.map((v: any) => {
+          return `${v.marker}${v.seriesName.slice(0, -5)} ${v.value[1]}%`
+        }).join("<br>");
       }
     },
     animation: false,
