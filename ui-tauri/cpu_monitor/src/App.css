@@ -1,4 +1,11 @@
 .chart-view {
-  display: flex;
-  height: 280px;
+    display: flex;
+    height: 280px;
+}
+
+.ui-setting {
+    height: 20px;
+    font-size: 12px;
+    text-align-all: center;
+    padding: 0 10px;
 }

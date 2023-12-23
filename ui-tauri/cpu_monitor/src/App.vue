@@ -3,6 +3,7 @@ import {onMounted, onUnmounted, ref} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
 import {listen} from "@tauri-apps/api/event";
 import * as echarts from 'echarts';
+import {useToast} from "vue-toastification";
 
 let chartCpuAve: echarts.EChartsType;
 let chartCpuCores: echarts.EChartsType;
@@ -16,6 +17,8 @@ let process_msg_map_ref = ref();
 let listen_list: any[] = [];
 
 let ui_config_smooth = false;
+
+const toast = useToast();
 
 const initListen = () => {
   invoke('init_process');
@@ -346,11 +349,60 @@ onUnmounted(() => {
     cb();
   })
 });
+
+/**** ui settings ****/
+let ui_add_name_text = "";
+let ui_add_pid_text = "";
+
+const ui_add_name_button = () => {
+  invoke('rpc', {
+    command: "add_name",
+    message: ui_add_name_text,
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
+const ui_clear_button = () => {
+  invoke('rpc', {
+    command: "clear_data",
+    message: "",
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
+const ui_add_pid_button = () => {
+  invoke('rpc', {
+    command: "add_pid",
+    message: ui_add_pid_text,
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
 </script>
 
 <template>
+  <div style="height: 50px">
+    <button class="ui-setting" @click="ui_clear_button">Clear</button>
+
+    <input v-model="ui_add_name_text" class="ui-setting" placeholder="name" type="text"/>
+    <button class="ui-setting" @click="ui_add_name_button">Add</button>
+
+    <input v-model="ui_add_pid_text" class="ui-setting" placeholder="pid" type="text"/>
+    <button class="ui-setting" @click="ui_add_pid_button">Add</button>
+  </div>
+
   <div id="chart-cpu-ave" class="chart-view"></div>
   <div id="chart-cpu-cores" class="chart-view"></div>
+
   <div v-for="pid in process_msg_map_ref">
     <div :id="`chart-process-cpu-${pid}`" class="chart-view"></div>
     <div :id="`chart-process-mem-${pid}`" class="chart-view"></div>

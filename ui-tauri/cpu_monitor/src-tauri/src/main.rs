@@ -3,53 +3,104 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread::spawn;
 
 use lazy_static::lazy_static;
-use log::info;
+use log::{debug, info};
 use rpc_core::rpc::Rpc;
 use rpc_core_net::config_builder;
 use rpc_core_net::rpc_client;
 use tauri::{Window, WindowEvent};
-use tokio::sync::Notify;
+use tokio::sync::{mpsc, Mutex, Notify};
 
 use crate::msg_data::MsgData;
 
 mod msg;
 mod msg_data;
 
-struct RpcWrap {
-    pub rpc: Rc<Rpc>,
+struct RpcChannel {
+    tx1: Arc<Mutex<mpsc::Sender<String>>>,
+    rx1: Arc<Mutex<mpsc::Receiver<String>>>,
+    tx2: Arc<Mutex<mpsc::Sender<rpc_core::request::FutureRet<String>>>>,
+    rx2: Arc<Mutex<mpsc::Receiver<rpc_core::request::FutureRet<String>>>>,
 }
-
-unsafe impl Send for RpcWrap {}
 
 lazy_static! {
     static ref WINDOW: Mutex<Option<Window>> = Mutex::new(None);
-    static ref RPC: Mutex<Option<RpcWrap>> = Mutex::new(None);
     static ref NOTIFY_CLOSE_RPC: Notify = Notify::new();
+    static ref RPC_CHANNEL: RpcChannel = {
+        let (tx1, rx1) = tokio::sync::mpsc::channel(1);
+        let (tx2, rx2) = tokio::sync::mpsc::channel(1);
+        RpcChannel {
+            tx1: Arc::new(Mutex::new(tx1)),
+            rx1: Arc::new(Mutex::new(rx1)),
+            tx2: Arc::new(Mutex::new(tx2)),
+            rx2: Arc::new(Mutex::new(rx2)),
+        }
+    };
 }
 
 #[tauri::command]
 fn init_process(window: Window) {
-    *WINDOW.lock().unwrap() = Some(window);
+    *WINDOW.blocking_lock() = Some(window);
 }
 
-fn send_event(event: &str, json: &str) {
-    if let Some(w) = WINDOW.lock().unwrap().as_ref() {
-        w.emit(event, json).unwrap();
+#[tauri::command]
+async fn rpc(command: String, message: String) -> Result<String, String> {
+    debug!("rpc: cmd: {command}, msg: {message}");
+    {
+        let tx = RPC_CHANNEL.tx1.lock().await;
+        tx.send(command).await.unwrap();
+        tx.send(message).await.unwrap();
+    }
+    let ret = RPC_CHANNEL.rx2.lock().await.recv().await.unwrap();
+    debug!("rpc: ret: {ret:?}");
+    if let Some(ret) = ret.result {
+        Ok(ret)
+    } else {
+        Err(ret.type_.to_str().to_string())
     }
 }
 
-#[allow(dead_code)]
-fn get_rpc() -> Option<Rc<Rpc>> {
-    RPC.lock().unwrap().as_ref().map_or(None, |r| Some(r.rpc.clone()))
+fn send_event(event: &str, json: &str) {
+    WINDOW.try_lock()
+        .ok()
+        .and_then(|w| w.as_ref().cloned())
+        .map(|w| w.emit(event, json).unwrap());
+}
+
+fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
+    let gen_result = |msg: &str| -> rpc_core::request::FutureRet<String> {
+        rpc_core::request::FutureRet {
+            type_: rpc_core::request::FinallyType::Normal,
+            result: Some(msg.to_string()),
+        }
+    };
+
+    tokio::task::spawn_local(async move {
+        let mut rx = RPC_CHANNEL.rx1.lock().await;
+        loop {
+            let cmd = rx.recv().await.unwrap();
+            let msg = rx.recv().await.unwrap();
+            match cmd.as_str() {
+                "clear_data" => {
+                    msg_data.borrow_mut().clear();
+                    RPC_CHANNEL.tx2.lock().await.send(gen_result("ok")).await.unwrap();
+                }
+                _ => {
+                    let result = rpc.cmd(cmd).msg(msg).future::<String>().await;
+                    RPC_CHANNEL.tx2.lock().await.send(result).await.unwrap();
+                }
+            }
+        }
+    });
 }
 
 async fn rpc_task_loop() {
     let rpc = Rpc::new(None);
     let msg_data = Rc::new(RefCell::new(MsgData::default()));
+    rpc_message_channel(rpc.clone(), msg_data.clone());
 
     let msg_data_clone = msg_data.clone();
     rpc.subscribe("on_cpu_msg", move |msg: msg::CpuMsg| {
@@ -61,8 +112,6 @@ async fn rpc_task_loop() {
         msg_data_clone.borrow_mut().process_process_msg(msg);
         send_event("on_msg_data", serde_json::to_string(&*msg_data_clone).unwrap().as_str());
     });
-
-    *RPC.lock().unwrap() = Some(RpcWrap { rpc: rpc.clone() });
 
     let config = config_builder::RpcConfigBuilder::new().rpc(Some(rpc)).build();
     let rpc_client = rpc_client::RpcClient::new(config);
@@ -83,7 +132,9 @@ async fn rpc_task_loop() {
 }
 
 fn main() {
-    // std::env::set_var("RUST_LOG", "trace");
+    std::env::var("RUST_LOG").map_err(|_| {
+        std::env::set_var("RUST_LOG", "info");
+    }).ok();
     env_logger::init();
 
     let rpc_thread = spawn(|| {
@@ -103,11 +154,11 @@ fn main() {
     let rpc_thread = Arc::new(Mutex::new(Some(rpc_thread)));
     let close_rpc = move || {
         NOTIFY_CLOSE_RPC.notify_one();
-        rpc_thread.lock().unwrap().take().unwrap().join().unwrap();
+        rpc_thread.blocking_lock().take().unwrap().join().unwrap();
     };
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![init_process])
+        .invoke_handler(tauri::generate_handler![init_process, rpc])
         .on_window_event(move |event| {
             match event.event() {
                 WindowEvent::CloseRequested { .. } => {
