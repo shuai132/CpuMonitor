@@ -353,6 +353,41 @@ onUnmounted(() => {
 /**** ui settings ****/
 let ui_add_name_text = "";
 let ui_add_pid_text = "";
+let ui_save_path_text = "";
+let ui_load_path_text = "";
+
+const ui_clear_button = () => {
+  invoke('rpc', {
+    command: "clear_data",
+    message: "",
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
+const ui_save_button = () => {
+  invoke('rpc', {
+    command: "save_data",
+    message: ui_save_path_text,
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
+const ui_load_button = () => {
+  invoke('rpc', {
+    command: "load_data",
+    message: ui_load_path_text,
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
 
 const ui_add_name_button = () => {
   invoke('rpc', {
@@ -365,10 +400,10 @@ const ui_add_name_button = () => {
   });
 };
 
-const ui_clear_button = () => {
+const ui_del_name_button = () => {
   invoke('rpc', {
-    command: "clear_data",
-    message: "",
+    command: "del_name",
+    message: ui_add_name_text,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -387,17 +422,35 @@ const ui_add_pid_button = () => {
   });
 };
 
+const ui_del_pid_button = () => {
+  invoke('rpc', {
+    command: "del_pid",
+    message: ui_add_pid_text,
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
 </script>
 
 <template>
   <div style="height: 50px">
-    <button class="ui-setting" @click="ui_clear_button">Clear</button>
-
     <input v-model="ui_add_name_text" class="ui-setting" placeholder="name" type="text"/>
     <button class="ui-setting" @click="ui_add_name_button">Add</button>
+    <button class="ui-setting" @click="ui_del_name_button">Del</button>
 
     <input v-model="ui_add_pid_text" class="ui-setting" placeholder="pid" type="text"/>
     <button class="ui-setting" @click="ui_add_pid_button">Add</button>
+    <button class="ui-setting" @click="ui_del_pid_button">Del</button>
+
+    <button class="ui-setting" @click="ui_clear_button">Clear</button>
+
+    <input v-model="ui_save_path_text" class="ui-setting" placeholder="save path" type="text"/>
+    <button class="ui-setting" @click="ui_save_button">Save</button>
+    <input v-model="ui_load_path_text" class="ui-setting" placeholder="load path" type="text"/>
+    <button class="ui-setting" @click="ui_load_button">Load</button>
   </div>
 
   <div id="chart-cpu-ave" class="chart-view"></div>

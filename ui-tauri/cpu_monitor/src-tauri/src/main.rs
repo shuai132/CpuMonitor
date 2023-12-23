@@ -12,6 +12,7 @@ use rpc_core::rpc::Rpc;
 use rpc_core_net::config_builder;
 use rpc_core_net::rpc_client;
 use tauri::{Window, WindowEvent};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::{mpsc, Mutex, Notify};
 
 use crate::msg_data::MsgData;
@@ -19,11 +20,16 @@ use crate::msg_data::MsgData;
 mod msg;
 mod msg_data;
 
+enum JsResult {
+    RPC(rpc_core::request::FutureRet<String>),
+    CTRL(Result<String, String>),
+}
+
 struct RpcChannel {
     tx1: Arc<Mutex<mpsc::Sender<String>>>,
     rx1: Arc<Mutex<mpsc::Receiver<String>>>,
-    tx2: Arc<Mutex<mpsc::Sender<rpc_core::request::FutureRet<String>>>>,
-    rx2: Arc<Mutex<mpsc::Receiver<rpc_core::request::FutureRet<String>>>>,
+    tx2: Arc<Mutex<mpsc::Sender<JsResult>>>,
+    rx2: Arc<Mutex<mpsc::Receiver<JsResult>>>,
 }
 
 lazy_static! {
@@ -55,11 +61,19 @@ async fn rpc(command: String, message: String) -> Result<String, String> {
         tx.send(message).await.unwrap();
     }
     let ret = RPC_CHANNEL.rx2.lock().await.recv().await.unwrap();
-    debug!("rpc: ret: {ret:?}");
-    if let Some(ret) = ret.result {
-        Ok(ret)
-    } else {
-        Err(ret.type_.to_str().to_string())
+    match ret {
+        JsResult::RPC(ret) => {
+            debug!("rpc: ret: {ret:?}");
+            if let Some(ret) = ret.result {
+                Ok(ret)
+            } else {
+                Err(ret.type_.to_str().to_string())
+            }
+        }
+        JsResult::CTRL(ret) => {
+            debug!("str: ret: {ret:?}");
+            ret
+        }
     }
 }
 
@@ -70,12 +84,23 @@ fn send_event(event: &str, json: &str) {
         .map(|w| w.emit(event, json).unwrap());
 }
 
+async fn save_data_to_file(data: &[u8], path: String) -> Result<String, String> {
+    let mut file = tokio::fs::File::create(path).await.map_err(|e| { e.to_string() })?;
+    file.write_all(data).await.map_err(|_| { "write_all error".to_string() })?;
+    Ok("Save Success".to_string())
+}
+
+async fn load_data_from_file(msg_data: Rc<RefCell<MsgData>>, path: String) -> Result<String, String> {
+    let mut file = tokio::fs::File::open(path).await.map_err(|e| { e.to_string() })?;
+    let mut json_data = String::new();
+    file.read_to_string(&mut json_data).await.map_err(|e| { e.to_string() })?;
+    *msg_data.borrow_mut() = serde_json::from_str::<MsgData>(json_data.as_str()).unwrap();
+    Ok("Load Success".to_string())
+}
+
 fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
-    let gen_result = |msg: &str| -> rpc_core::request::FutureRet<String> {
-        rpc_core::request::FutureRet {
-            type_: rpc_core::request::FinallyType::Normal,
-            result: Some(msg.to_string()),
-        }
+    let ctrl_result = |msg: Result<String, String>| -> JsResult{
+        JsResult::CTRL(msg)
     };
 
     tokio::task::spawn_local(async move {
@@ -86,11 +111,36 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
             match cmd.as_str() {
                 "clear_data" => {
                     msg_data.borrow_mut().clear();
-                    RPC_CHANNEL.tx2.lock().await.send(gen_result("ok")).await.unwrap();
+                    RPC_CHANNEL.tx2.lock().await.send(ctrl_result(Ok("ok".to_string()))).await.unwrap();
+                }
+                "save_data" => {
+                    let path = msg;
+                    let json_data = serde_json::to_string(&*msg_data).unwrap();
+                    let result = save_data_to_file(json_data.as_bytes(), path).await;
+                    match result {
+                        Ok(msg) => {
+                            RPC_CHANNEL.tx2.lock().await.send(ctrl_result(Ok(msg))).await.unwrap();
+                        }
+                        Err(msg) => {
+                            RPC_CHANNEL.tx2.lock().await.send(ctrl_result(Err(msg))).await.unwrap();
+                        }
+                    }
+                }
+                "load_data" => {
+                    let path = msg;
+                    let result = load_data_from_file(msg_data.clone(), path).await;
+                    match result {
+                        Ok(msg) => {
+                            RPC_CHANNEL.tx2.lock().await.send(ctrl_result(Ok(msg))).await.unwrap();
+                        }
+                        Err(msg) => {
+                            RPC_CHANNEL.tx2.lock().await.send(ctrl_result(Err(msg))).await.unwrap();
+                        }
+                    }
                 }
                 _ => {
                     let result = rpc.cmd(cmd).msg(msg).future::<String>().await;
-                    RPC_CHANNEL.tx2.lock().await.send(result).await.unwrap();
+                    RPC_CHANNEL.tx2.lock().await.send(JsResult::RPC(result)).await.unwrap();
                 }
             }
         }
