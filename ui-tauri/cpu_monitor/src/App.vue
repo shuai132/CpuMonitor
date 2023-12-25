@@ -357,7 +357,17 @@ let ui_save_path_text = "";
 let ui_load_path_text = "";
 
 const ui_clear_button = () => {
-  invoke('rpc', {
+  chartCpuAve.setOption({
+    series: [{data: [],}]
+  });
+  chartCpuCores.setOption({
+    series: cpu_msg_list.slice(-1)[0]["cores"].map(() => ({
+      data: [],
+    })),
+  });
+  process_msg_map_ref.value = [];
+
+  invoke('ctrl', {
     command: "clear_data",
     message: "",
   }).then((result: any) => {
@@ -368,7 +378,7 @@ const ui_clear_button = () => {
 };
 
 const ui_save_button = () => {
-  invoke('rpc', {
+  invoke('ctrl', {
     command: "save_data",
     message: ui_save_path_text,
   }).then((result: any) => {
@@ -379,7 +389,7 @@ const ui_save_button = () => {
 };
 
 const ui_load_button = () => {
-  invoke('rpc', {
+  invoke('ctrl', {
     command: "load_data",
     message: ui_load_path_text,
   }).then((result: any) => {
