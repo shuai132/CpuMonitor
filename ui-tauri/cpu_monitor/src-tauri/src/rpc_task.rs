@@ -14,16 +14,21 @@ use tokio::sync::{mpsc, Mutex, Notify};
 use crate::msg;
 use crate::msg_data::MsgData;
 
+struct Param {
+    cmd: String,
+    msg: String,
+}
+
 struct RpcChannel {
-    tx1: Arc<Mutex<mpsc::Sender<String>>>,
-    rx1: Arc<Mutex<mpsc::Receiver<String>>>,
+    tx1: Arc<Mutex<mpsc::Sender<Param>>>,
+    rx1: Arc<Mutex<mpsc::Receiver<Param>>>,
     tx2: Arc<Mutex<mpsc::Sender<rpc_core::request::FutureRet<String>>>>,
     rx2: Arc<Mutex<mpsc::Receiver<rpc_core::request::FutureRet<String>>>>,
 }
 
 struct CtrlChannel {
-    tx1: Arc<Mutex<mpsc::Sender<String>>>,
-    rx1: Arc<Mutex<mpsc::Receiver<String>>>,
+    tx1: Arc<Mutex<mpsc::Sender<Param>>>,
+    rx1: Arc<Mutex<mpsc::Receiver<Param>>>,
     tx2: Arc<Mutex<mpsc::Sender<Result<String, String>>>>,
     rx2: Arc<Mutex<mpsc::Receiver<Result<String, String>>>>,
 }
@@ -61,11 +66,7 @@ pub fn init_process(window: Window) {
 #[tauri::command]
 pub async fn rpc(command: String, message: String) -> Result<String, String> {
     debug!("rpc: cmd: {command}, msg: {message}");
-    {
-        let tx = RPC_CHANNEL.tx1.lock().await;
-        tx.send(command).await.unwrap();
-        tx.send(message).await.unwrap();
-    }
+    RPC_CHANNEL.tx1.lock().await.send(Param { cmd: command, msg: message }).await.unwrap();
     let ret = RPC_CHANNEL.rx2.lock().await.recv().await.unwrap();
     debug!("rpc: ret: {ret:?}");
     if let Some(ret) = ret.result {
@@ -78,11 +79,7 @@ pub async fn rpc(command: String, message: String) -> Result<String, String> {
 #[tauri::command]
 pub async fn ctrl(command: String, message: String) -> Result<String, String> {
     debug!("ctrl: cmd: {command}, msg: {message}");
-    {
-        let tx = CTRL_CHANNEL.tx1.lock().await;
-        tx.send(command).await.unwrap();
-        tx.send(message).await.unwrap();
-    }
+    CTRL_CHANNEL.tx1.lock().await.send(Param { cmd: command, msg: message }).await.unwrap();
     let ret = CTRL_CHANNEL.rx2.lock().await.recv().await.unwrap();
     debug!("ctrl: ret: {ret:?}");
     ret
@@ -95,17 +92,17 @@ fn send_event(event: &str, json: &str) {
         .map(|w| w.emit(event, json).unwrap());
 }
 
-async fn save_data_to_file(data: &[u8], path: String) -> Result<String, String> {
-    let mut file = tokio::fs::File::create(path).await.map_err(|e| { e.to_string() })?;
-    file.write_all(data).await.map_err(|e| { e.to_string() })?;
+async fn save_data_to_file(data: &[u8], path: String) -> tokio::io::Result<String> {
+    let mut file = tokio::fs::File::create(path).await?;
+    file.write_all(data).await?;
     Ok("Save Success".to_string())
 }
 
-async fn load_data_from_file(msg_data: Rc<RefCell<MsgData>>, path: String) -> Result<String, String> {
-    let mut file = tokio::fs::File::open(path).await.map_err(|e| { e.to_string() })?;
+async fn load_data_from_file(msg_data: Rc<RefCell<MsgData>>, path: String) -> tokio::io::Result<String> {
+    let mut file = tokio::fs::File::open(path).await?;
     let mut json_data = String::new();
-    file.read_to_string(&mut json_data).await.map_err(|e| { e.to_string() })?;
-    *msg_data.borrow_mut() = serde_json::from_str::<MsgData>(json_data.as_str()).unwrap();
+    file.read_to_string(&mut json_data).await?;
+    *msg_data.borrow_mut() = serde_json::from_str::<MsgData>(json_data.as_str())?;
     Ok("Load Success".to_string())
 }
 
@@ -113,9 +110,8 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
     tokio::task::spawn_local(async move {
         let mut rx = RPC_CHANNEL.rx1.lock().await;
         loop {
-            let cmd = rx.recv().await.unwrap();
-            let msg = rx.recv().await.unwrap();
-            let result = rpc.cmd(cmd).msg(msg).future::<String>().await;
+            let param = rx.recv().await.unwrap();
+            let result = rpc.cmd(param.cmd).msg(param.msg).future::<String>().await;
             RPC_CHANNEL.tx2.lock().await.send(result).await.unwrap();
         }
     });
@@ -123,8 +119,9 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
     tokio::task::spawn_local(async move {
         let mut rx = CTRL_CHANNEL.rx1.lock().await;
         loop {
-            let cmd = rx.recv().await.unwrap();
-            let msg = rx.recv().await.unwrap();
+            let param = rx.recv().await.unwrap();
+            let cmd = param.cmd;
+            let msg = param.msg;
             match cmd.as_str() {
                 "clear_data" => {
                     msg_data.borrow_mut().clear();
@@ -133,12 +130,12 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
                 "save_data" => {
                     let path = msg;
                     let json_data = serde_json::to_string_pretty(&*msg_data).unwrap();
-                    let result = save_data_to_file(json_data.as_bytes(), path).await;
+                    let result = save_data_to_file(json_data.as_bytes(), path).await.map_err(|e| e.to_string());
                     CTRL_CHANNEL.tx2.lock().await.send(result).await.unwrap();
                 }
                 "load_data" => {
                     let path = msg;
-                    let result = load_data_from_file(msg_data.clone(), path).await;
+                    let result = load_data_from_file(msg_data.clone(), path).await.map_err(|e| e.to_string());
                     CTRL_CHANNEL.tx2.lock().await.send(result).await.unwrap();
                 }
                 _ => {

@@ -3,9 +3,24 @@
     height: 280px;
 }
 
-.ui-setting {
-    height: 20px;
-    font-size: 12px;
-    text-align-all: center;
-    padding: 0 10px;
+.ui-setting-div {
+    display: flex;
+    align-items: center;
+    height: 70px;
+    width: 280px;
+}
+
+.ui-setting-input {
+    width: 150px;
+}
+
+.ui-setting-span {
+    width: 1px;
+}
+
+.ui-setting-input-path {
+    width: 198px;
+}
+
+.ui-setting-button {
 }

@@ -122,7 +122,7 @@ static void initRpcTask() {
       s_monitor_pids.erase(iter);
       return "ok";
     } else {
-      return "no such pid";
+      return "no such name";
     }
   });
 
