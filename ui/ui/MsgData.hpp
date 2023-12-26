@@ -42,7 +42,7 @@ struct MsgData {
       // cpu
       {
         msg::CpuMsg msg;
-        msg.timestamps = i;
+        msg.ave.timestamps = i;
         msg.ave.name = "cpu";
         msg.ave.usage = (sin((float)i / 10) + 1) * 50;
 

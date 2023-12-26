@@ -133,7 +133,7 @@ void Home::onDraw() {
   ImGui::Checkbox("MEM##Show MEM", &ui::flag::showMem);
 
   static auto calcTimestampsFromStart = [](uint64_t timestamps) -> double {
-    return double(timestamps - s_msg_cpus.front().timestamps) / 1000;
+    return double(timestamps - s_msg_cpus.front().ave.timestamps) / 1000;
   };
 
   {
@@ -329,7 +329,7 @@ void Home::onDraw() {
           s_msg_cpus.front().ave.name.c_str(),
           (ImPlotGetter)[](int idx, void* user_data) {
             auto& info = s_msg_cpus[idx];
-            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave.usage};
+            return ImPlotPoint{calcTimestampsFromStart(info.ave.timestamps), info.ave.usage};
           },
           nullptr, (int)s_msg_cpus.size());
 
@@ -339,12 +339,12 @@ void Home::onDraw() {
           s_msg_cpus.front().ave.name.c_str(),
           (ImPlotGetter)[](int idx, void* user_data) {
             auto& info = s_msg_cpus[idx];
-            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), 0};
+            return ImPlotPoint{calcTimestampsFromStart(info.ave.timestamps), 0};
           },
           nullptr,
           (ImPlotGetter)[](int idx, void* user_data) {
             auto& info = s_msg_cpus[idx];
-            return ImPlotPoint{calcTimestampsFromStart(info.timestamps), info.ave.usage};
+            return ImPlotPoint{calcTimestampsFromStart(info.ave.timestamps), info.ave.usage};
           },
           nullptr, (int)s_msg_cpus.size(), 0);
       ImPlot::PopStyleVar();

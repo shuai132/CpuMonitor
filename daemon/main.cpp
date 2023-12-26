@@ -170,7 +170,6 @@ static void sendNowCpuInfos() {
       info.timestamps = timestampsNow;
       msg.cores.push_back(std::move(info));
     }
-    msg.timestamps = timestampsNow;
     s_rpc->cmd("on_cpu_msg")->msg(msg)->call();
   }
 

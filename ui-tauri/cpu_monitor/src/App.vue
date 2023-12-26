@@ -352,10 +352,10 @@ onUnmounted(() => {
 });
 
 /**** ui settings ****/
-let ui_add_name_text = "";
-let ui_add_pid_text = "";
-let ui_save_path_text = "";
-let ui_load_path_text = "";
+let ui_add_name_text = ref("");
+let ui_add_pid_text = ref("");
+let ui_save_path_text = ref("");
+let ui_load_path_text = ref("");
 
 const ui_popup_settings = ref(false)
 const ui_button_color = "#3c78c8";
@@ -381,10 +381,21 @@ const ui_clear_button = () => {
   });
 };
 
+const ui_create_test_data_button = () => {
+  invoke('ctrl', {
+    command: "create_test_data",
+    message: "",
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
 const ui_save_button = () => {
   invoke('ctrl', {
     command: "save_data",
-    message: ui_save_path_text,
+    message: ui_save_path_text.value,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -395,7 +406,7 @@ const ui_save_button = () => {
 const ui_load_button = () => {
   invoke('ctrl', {
     command: "load_data",
-    message: ui_load_path_text,
+    message: ui_load_path_text.value,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -406,7 +417,7 @@ const ui_load_button = () => {
 const ui_add_name_button = () => {
   invoke('rpc', {
     command: "add_name",
-    message: ui_add_name_text,
+    message: ui_add_name_text.value,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -417,7 +428,7 @@ const ui_add_name_button = () => {
 const ui_del_name_button = () => {
   invoke('rpc', {
     command: "del_name",
-    message: ui_add_name_text,
+    message: ui_add_name_text.value,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -428,7 +439,7 @@ const ui_del_name_button = () => {
 const ui_add_pid_button = () => {
   invoke('rpc', {
     command: "add_pid",
-    message: ui_add_pid_text,
+    message: ui_add_pid_text.value,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -439,7 +450,7 @@ const ui_add_pid_button = () => {
 const ui_del_pid_button = () => {
   invoke('rpc', {
     command: "del_pid",
-    message: ui_add_pid_text,
+    message: ui_add_pid_text.value,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -481,7 +492,8 @@ const ui_del_pid_button = () => {
       style="width: 280px; padding: 15px"
   >
 
-    <var-app-bar color="linear-gradient(90deg, rgba(72,176,221,1) 0%, rgba(0,208,161,1) 100%)" style="margin-bottom: 30px" title="Settings"
+    <var-app-bar color="linear-gradient(90deg, rgba(72,176,221,1) 0%, rgba(0,208,161,1) 100%)"
+                 style="margin-bottom: 30px" title="Settings"
                  title-position="center">
       <template #left>
         <var-button
@@ -565,6 +577,13 @@ const ui_del_pid_button = () => {
       <span class="ui-setting-span"></span>
       <var-button :color=ui_button_color class="ui-setting-button" type="primary"
                   @click="ui_load_button">Load
+      </var-button>
+    </div>
+
+    <div class="ui-setting-div">
+      <var-button :color="ui_button_color" class="ui-setting-button" style="width: 257px" type="primary"
+                  @click="ui_create_test_data_button">
+        Create Test Data
       </var-button>
     </div>
 

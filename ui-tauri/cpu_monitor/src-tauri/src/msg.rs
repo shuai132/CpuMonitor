@@ -11,7 +11,6 @@ pub struct CpuInfo {
 pub struct CpuMsg {
     pub ave: CpuInfo,
     pub cores: Vec<CpuInfo>,
-    pub timestamps: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

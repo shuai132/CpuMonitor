@@ -31,6 +31,9 @@ pub struct MsgData {
     pub msg_cpus: Vec<CpuMsg>,
     pub msg_pids: BTreeMap<ProcessKey, ProcessValue>,
     pub pid_current_thread_num: BTreeMap<u64, u32>,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub has_preload_data: bool,
 }
 
 impl MsgData {
@@ -38,13 +41,14 @@ impl MsgData {
         self.msg_cpus.clear();
         self.msg_pids.clear();
         self.pid_current_thread_num.clear();
+        self.has_preload_data = false;
     }
 
     pub fn create_test_data(&mut self) {
         self.clear();
         for i in 0..1000 {
             let mut msg = CpuMsg::default();
-            msg.timestamps = i;
+            msg.ave.timestamps = i;
             msg.ave.name = "cpu".to_string();
             msg.ave.usage = ((i as f32 / 10.0).sin() + 1.0) * 50.0;
 
@@ -58,13 +62,21 @@ impl MsgData {
 
             self.msg_cpus.push(msg);
         }
+        self.has_preload_data = true;
     }
 
-    pub fn process_cpu_msg(&mut self, msg: CpuMsg) {
+    pub fn process_cpu_msg(&mut self, msg: CpuMsg) -> bool {
+        if self.has_preload_data {
+            return false;
+        }
         self.msg_cpus.push(msg);
+        true
     }
 
-    pub fn process_process_msg(&mut self, msg: ProcessMsg) {
+    pub fn process_process_msg(&mut self, msg: ProcessMsg) -> bool {
+        if self.has_preload_data {
+            return false;
+        }
         for pInfo in msg.infos {
             let processValue = self.msg_pids.entry(pInfo.id).or_insert(ProcessValue::default());
             let threadInfos = &mut processValue.thread_infos;
@@ -88,6 +100,7 @@ impl MsgData {
             processValue.max_rss = processValue.max_rss.max(pInfo.mem_info.rss);
             processValue.mem_infos.push(pInfo.mem_info);
         }
+        true
     }
 }
 

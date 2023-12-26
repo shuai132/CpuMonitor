@@ -22,9 +22,8 @@ MSG_SERIALIZE_DEFINE(CpuInfo, name, usage, timestamps);
 struct CpuMsg {
   CpuInfo ave{};
   std::vector<CpuInfo> cores{};
-  uint64_t timestamps = 0;
 };
-MSG_SERIALIZE_DEFINE(CpuMsg, ave, cores, timestamps);
+MSG_SERIALIZE_DEFINE(CpuMsg, ave, cores);
 
 struct ThreadInfo {
   std::string name;

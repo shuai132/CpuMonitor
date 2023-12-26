@@ -12,6 +12,7 @@ use crate::rpc_task::*;
 mod msg;
 mod msg_data;
 mod rpc_task;
+mod utils;
 
 fn main() {
     std::env::var("RUST_LOG").map_err(|_| {

@@ -13,6 +13,7 @@ use tokio::sync::{mpsc, Mutex, Notify};
 
 use crate::msg;
 use crate::msg_data::MsgData;
+use crate::utils::ParsePath;
 
 struct Param {
     cmd: String,
@@ -93,17 +94,21 @@ fn send_event(event: &str, json: &str) {
 }
 
 async fn save_data_to_file(data: &[u8], path: String) -> tokio::io::Result<String> {
-    let mut file = tokio::fs::File::create(path).await?;
+    let path = path.parse_path();
+    let mut file = tokio::fs::File::create(path.as_str()).await?;
     file.write_all(data).await?;
-    Ok("Save Success".to_string())
+    Ok(format!("Save Success: {path}"))
 }
 
 async fn load_data_from_file(msg_data: Rc<RefCell<MsgData>>, path: String) -> tokio::io::Result<String> {
-    let mut file = tokio::fs::File::open(path).await?;
+    let path = path.parse_path();
+    let mut file = tokio::fs::File::open(path.as_str()).await?;
     let mut json_data = String::new();
     file.read_to_string(&mut json_data).await?;
     *msg_data.borrow_mut() = serde_json::from_str::<MsgData>(json_data.as_str())?;
-    Ok("Load Success".to_string())
+    send_event("on_msg_data", json_data.as_str());
+    msg_data.borrow_mut().has_preload_data = true;
+    Ok(format!("Load Success: {path}"))
 }
 
 fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
@@ -138,6 +143,11 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
                     let result = load_data_from_file(msg_data.clone(), path).await.map_err(|e| e.to_string());
                     CTRL_CHANNEL.tx2.lock().await.send(result).await.unwrap();
                 }
+                "create_test_data" => {
+                    msg_data.borrow_mut().create_test_data();
+                    send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
+                    CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
+                }
                 _ => {
                     CTRL_CHANNEL.tx2.lock().await.send(Err("no such ctrl method".to_string())).await.unwrap();
                 }
@@ -158,7 +168,9 @@ pub async fn rpc_task_loop() {
 
     let msg_data_clone = msg_data.clone();
     rpc.subscribe("on_process_msg", move |msg: msg::ProcessMsg| {
-        msg_data_clone.borrow_mut().process_process_msg(msg);
+        if !msg_data_clone.borrow_mut().process_process_msg(msg) {
+            return;
+        }
         send_event("on_msg_data", serde_json::to_string(&*msg_data_clone).unwrap().as_str());
     });
 

@@ -23,6 +23,7 @@ rpc-core = { path = "../../../thirdparty/asio_net/include/asio_net/rpc_core/rust
 rpc-core-net = { path = "../../../thirdparty/asio_net/include/asio_net/rpc_core/rust/src/net" }
 tokio = { version = "1", features = ["rt", "net", "io-util"] }
 tokio-stream = "0.1"
+dirs = "5.0.1"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
