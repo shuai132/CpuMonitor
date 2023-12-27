@@ -6,7 +6,7 @@
 .ui-setting-div {
     display: flex;
     align-items: center;
-    height: 70px;
+    height: 40px;
     width: 280px;
 }
 
@@ -23,4 +23,9 @@
 }
 
 .ui-setting-button {
+}
+
+.ui-setting-icon {
+    width: 30px;
+    height: 30px;
 }

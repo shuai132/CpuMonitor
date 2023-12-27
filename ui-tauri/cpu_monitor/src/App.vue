@@ -16,17 +16,19 @@ let process_msg_map: any;
 let process_msg_map_ref = ref();
 let listen_list: any[] = [];
 
-let ui_config_smooth = false;
+let ui_config_dark = ref(false);
+let ui_config_smooth = ref(false);
+let ui_connect_status = ref("disconnected");
 
 Snackbar.allowMultiple(true)
 const toast = Snackbar;
 
 const initListen = () => {
   invoke('init_process');
+  invoke('get_msg_data');
 
   let un_listen = listen('on_msg_data', (event: any) => {
-    const json = event.payload.toString();
-    msg_data = JSON.parse(json);
+    msg_data = JSON.parse(event.payload);
     cpu_msg_list = msg_data["msg_cpus"];
 
     // ave charts
@@ -34,7 +36,7 @@ const initListen = () => {
       series: [
         {
           type: 'line',
-          smooth: ui_config_smooth,
+          smooth: ui_config_smooth.value,
           data: cpu_msg_list.map(value => {
             const item = value["ave"];
             return [new Date(item["timestamps"]), item["usage"].toFixed(2)]
@@ -50,7 +52,7 @@ const initListen = () => {
       chartCpuCores.setOption({
         series: cpu_msg_list.slice(-1)[0]["cores"].map((item: any, i: any) => ({
           type: 'line',
-          smooth: ui_config_smooth,
+          smooth: ui_config_smooth.value,
           data: cpu_msg_list.map(value => {
             const item = value["cores"][i];
             return [new Date(item["timestamps"]), item["usage"].toFixed(2)];
@@ -68,6 +70,10 @@ const initListen = () => {
     });
   });
   listen_list.push(un_listen);
+
+  listen_list.push(listen('on_status', (event: any) => {
+    ui_connect_status.value = event.payload;
+  }));
 };
 
 const updateProcessChartsDom = () => {
@@ -149,7 +155,7 @@ const updateProcessCharts = () => {
         series: item["thread_infos"].slice(0, 10).map((item: any, _: any) => {
           return {
             type: 'line',
-            smooth: ui_config_smooth,
+            smooth: ui_config_smooth.value,
             data: item["cpu_infos"].map((item: any) => {
               return [new Date(item["timestamps"]), item["usage"].toFixed(2)];
             }),
@@ -226,7 +232,7 @@ const updateProcessCharts = () => {
         series: [
           {
             type: 'line',
-            smooth: ui_config_smooth,
+            smooth: ui_config_smooth.value,
             data: item["mem_infos"].map((value: any) => {
               return [new Date(value["timestamps"]), value["rss"]];
             }),
@@ -351,6 +357,7 @@ const initCharts = () => {
 onMounted(() => {
   initListen();
   initCharts();
+  ui_get_msg_data();
 });
 
 onUnmounted(() => {
@@ -362,8 +369,8 @@ onUnmounted(() => {
 /**** ui settings ****/
 let ui_add_name_text = ref("");
 let ui_add_pid_text = ref("");
-let ui_save_path_text = ref("~/tmp/data.json");
-let ui_load_path_text = ref("~/tmp/data.json");
+let ui_save_path_text = ref("");
+let ui_load_path_text = ref("");
 let ui_addr_ip_text = ref("localhost");
 let ui_addr_port_text = ref("8088");
 
@@ -479,6 +486,13 @@ const ui_del_pid_button = () => {
   });
 };
 
+const ui_get_msg_data = () => {
+  invoke('ctrl', {
+    command: "get_msg_data",
+    message: "",
+  });
+};
+
 </script>
 
 <template>
@@ -499,6 +513,7 @@ const ui_del_pid_button = () => {
     <div id="chart-cpu-cores" class="chart-view"></div>
 
     <div v-for="pid in process_msg_map_ref">
+      <var-divider/>
       <div :id="`chart-process-cpu-${pid}`" class="chart-view"></div>
       <div :id="`chart-process-mem-${pid}`" class="chart-view"></div>
     </div>
@@ -541,6 +556,32 @@ const ui_del_pid_button = () => {
       </template>
     </var-app-bar>
 
+    <var-divider description="UI"/>
+
+    <var-space justify="space-between">
+      <var-space :size="[0, 10]">
+        <var-icon v-if="ui_config_dark" class="ui-setting-icon" name="weather-night" size="26"/>
+        <var-icon v-else class="ui-setting-icon" name="white-balance-sunny" size="26"/>
+        <span style="font-size: 18px; line-height: 30px; color: #808080;">Dark</span>
+      </var-space>
+      <var-switch v-model="ui_config_dark" :color=ui_button_color :size="25"
+                  @click='toast.error("not yet implemented")'/>
+    </var-space>
+
+    <var-divider/>
+
+    <var-space justify="space-between">
+      <var-space :size="[0, 10]">
+        <img v-if="ui_config_smooth" alt="" class="ui-setting-icon" src="/smooth_on.svg">
+        <img v-else alt="" class="ui-setting-icon" src="/smooth_off.svg">
+        <span style="font-size: 18px; line-height: 30px; color: #808080;">Smooth</span>
+      </var-space>
+      <var-switch v-model="ui_config_smooth" :color=ui_button_color :size="25" @click='ui_get_msg_data'/>
+    </var-space>
+
+    <var-divider/>
+    <var-divider description="monitor"/>
+
     <div class="ui-setting-div">
       <var-input v-model="ui_add_name_text"
                  class="ui-setting-input"
@@ -557,6 +598,8 @@ const ui_del_pid_button = () => {
                   @click="ui_del_name_button">Del
       </var-button>
     </div>
+
+    <var-divider/>
 
     <div class="ui-setting-div">
       <var-input v-model="ui_add_pid_text"
@@ -575,6 +618,8 @@ const ui_del_pid_button = () => {
       </var-button>
     </div>
 
+    <var-divider description="save / load record"/>
+
     <div class="ui-setting-div">
       <var-input v-model="ui_save_path_text"
                  class="ui-setting-input-path"
@@ -587,6 +632,8 @@ const ui_del_pid_button = () => {
                   @click="ui_save_button">Save
       </var-button>
     </div>
+
+    <var-divider/>
 
     <div class="ui-setting-div">
       <var-input v-model="ui_load_path_text"
@@ -601,18 +648,21 @@ const ui_del_pid_button = () => {
       </var-button>
     </div>
 
+    <var-divider/>
+    <var-divider :description="ui_connect_status"/>
+
     <div class="ui-setting-div">
       <var-input v-model="ui_addr_ip_text"
-                 style="width: 132px"
                  placeholder="IP"
                  size="small"
+                 style="width: 132px"
                  type="text"
                  variant="outlined"/>
       <span class="ui-setting-span"></span>
       <var-input v-model="ui_addr_port_text"
-                 style="width: 75px"
                  placeholder="Port"
                  size="small"
+                 style="width: 75px"
                  type="text"
                  variant="outlined"/>
       <span class="ui-setting-span"></span>
@@ -621,12 +671,16 @@ const ui_del_pid_button = () => {
       </var-button>
     </div>
 
+    <var-divider/>
+    <var-divider description="test"/>
+
     <div class="ui-setting-div">
       <var-button :color="ui_button_color" class="ui-setting-button" style="width: 257px" type="primary"
                   @click="ui_create_test_data_button">
         Create Test Data
       </var-button>
     </div>
+    <var-divider/>
 
     <div class="ui-setting-div">
       <var-button :color="ui_button_color" class="ui-setting-button" style="width: 257px" type="primary"
@@ -634,6 +688,8 @@ const ui_del_pid_button = () => {
         Clear History Data
       </var-button>
     </div>
+
+    <var-divider/>
   </var-popup>
 
 </template>

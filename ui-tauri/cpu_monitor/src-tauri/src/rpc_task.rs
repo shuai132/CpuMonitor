@@ -148,6 +148,9 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>, rpc_client:
                     send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
                     CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
                 }
+                "get_msg_data" => {
+                    send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
+                }
                 "set_ip_addr" => {
                     msg_data.borrow_mut().clear();
                     let addr: Vec<&str> = msg.split(":").collect();
@@ -194,12 +197,14 @@ pub async fn rpc_task_loop() {
     let rpc_client = rpc_client::RpcClient::new(config);
     rpc_client.on_open(|_: Rc<Rpc>| {
         info!("on_open");
+        send_event("on_status", "connected");
     });
     rpc_client.on_open_failed(|e| {
         info!("on_open_failed: {:?}", e);
     });
     rpc_client.on_close(|| {
         info!("on_close");
+        send_event("on_status", "disconnected");
     });
     rpc_client.set_reconnect(1000);
     rpc_client.open("localhost", 8088);
