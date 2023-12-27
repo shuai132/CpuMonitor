@@ -219,7 +219,10 @@ static void runServer() {
   rpc_config.max_body_size = MessageMaxByteSize;
   s_rpc_server = std::make_unique<rpc_server>(*s_context, s_argv.s_server_port, std::move(rpc_config));
   s_rpc_server->on_session = [](const std::weak_ptr<rpc_session>& ws) {
-    LOGD("on_session");
+    LOGI("device connected");
+    ws.lock()->on_close = [] {
+      LOGI("device disconnected");
+    };
   };
   LOGI("start server: port: %d", s_argv.s_server_port);
   s_rpc_server->start(true);

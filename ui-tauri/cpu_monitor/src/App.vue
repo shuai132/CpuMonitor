@@ -362,8 +362,10 @@ onUnmounted(() => {
 /**** ui settings ****/
 let ui_add_name_text = ref("");
 let ui_add_pid_text = ref("");
-let ui_save_path_text = ref("");
-let ui_load_path_text = ref("");
+let ui_save_path_text = ref("~/tmp/data.json");
+let ui_load_path_text = ref("~/tmp/data.json");
+let ui_addr_ip_text = ref("localhost");
+let ui_addr_port_text = ref("8088");
 
 const ui_popup_settings = ref(false)
 const ui_button_color = "#3c78c8";
@@ -415,6 +417,17 @@ const ui_load_button = () => {
   invoke('ctrl', {
     command: "load_data",
     message: ui_load_path_text.value,
+  }).then((result: any) => {
+    toast.success(result);
+  }).catch((reason: any) => {
+    toast.error(reason);
+  });
+};
+
+const ui_set_ip_addr = () => {
+  invoke('ctrl', {
+    command: "set_ip_addr",
+    message: `${ui_addr_ip_text.value}:${ui_addr_port_text.value}`,
   }).then((result: any) => {
     toast.success(result);
   }).catch((reason: any) => {
@@ -585,6 +598,26 @@ const ui_del_pid_button = () => {
       <span class="ui-setting-span"></span>
       <var-button :color=ui_button_color class="ui-setting-button" type="primary"
                   @click="ui_load_button">Load
+      </var-button>
+    </div>
+
+    <div class="ui-setting-div">
+      <var-input v-model="ui_addr_ip_text"
+                 style="width: 132px"
+                 placeholder="IP"
+                 size="small"
+                 type="text"
+                 variant="outlined"/>
+      <span class="ui-setting-span"></span>
+      <var-input v-model="ui_addr_port_text"
+                 style="width: 75px"
+                 placeholder="Port"
+                 size="small"
+                 type="text"
+                 variant="outlined"/>
+      <span class="ui-setting-span"></span>
+      <var-button :color=ui_button_color class="ui-setting-button" type="primary"
+                  @click="ui_set_ip_addr">Set
       </var-button>
     </div>
 

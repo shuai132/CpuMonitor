@@ -111,7 +111,7 @@ async fn load_data_from_file(msg_data: Rc<RefCell<MsgData>>, path: String) -> to
     Ok(format!("Load Success: {path}"))
 }
 
-fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
+fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>, rpc_client: Rc<rpc_client::RpcClient>) {
     tokio::task::spawn_local(async move {
         let mut rx = RPC_CHANNEL.rx1.lock().await;
         loop {
@@ -148,8 +148,25 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
                     send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
                     CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
                 }
+                "set_ip_addr" => {
+                    msg_data.borrow_mut().clear();
+                    let addr: Vec<&str> = msg.split(":").collect();
+                    if addr.len() != 2 {
+                        CTRL_CHANNEL.tx2.lock().await.send(Ok(format!("format error: {msg}"))).await.unwrap();
+                    } else {
+                        match addr[1].parse::<u16>() {
+                            Ok(port) => {
+                                rpc_client.open(addr[0], port);
+                                CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
+                            }
+                            Err(_) => {
+                                CTRL_CHANNEL.tx2.lock().await.send(Ok(format!("port invalid: {}", addr[1]))).await.unwrap();
+                            }
+                        }
+                    }
+                }
                 _ => {
-                    CTRL_CHANNEL.tx2.lock().await.send(Err("no such ctrl method".to_string())).await.unwrap();
+                    CTRL_CHANNEL.tx2.lock().await.send(Err(format!("no such ctrl method: {cmd}"))).await.unwrap();
                 }
             }
         }
@@ -157,11 +174,10 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>) {
 }
 
 pub async fn rpc_task_loop() {
-    let rpc = Rpc::new(None);
     let msg_data = Rc::new(RefCell::new(MsgData::default()));
-    rpc_message_channel(rpc.clone(), msg_data.clone());
-
     let msg_data_clone = msg_data.clone();
+
+    let rpc = Rpc::new(None);
     rpc.subscribe("on_cpu_msg", move |msg: msg::CpuMsg| {
         msg_data_clone.borrow_mut().process_cpu_msg(msg);
     });
@@ -174,7 +190,7 @@ pub async fn rpc_task_loop() {
         send_event("on_msg_data", serde_json::to_string(&*msg_data_clone).unwrap().as_str());
     });
 
-    let config = config_builder::RpcConfigBuilder::new().rpc(Some(rpc)).build();
+    let config = config_builder::RpcConfigBuilder::new().rpc(Some(rpc.clone())).build();
     let rpc_client = rpc_client::RpcClient::new(config);
     rpc_client.on_open(|_: Rc<Rpc>| {
         info!("on_open");
@@ -189,5 +205,6 @@ pub async fn rpc_task_loop() {
     rpc_client.open("localhost", 8088);
     info!("rpc running...");
 
+    rpc_message_channel(rpc, msg_data, rpc_client.clone());
     NOTIFY_CLOSE_RPC.notified().await;
 }
