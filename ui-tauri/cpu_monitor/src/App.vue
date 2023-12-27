@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {onMounted, onUnmounted, ref} from 'vue';
+import {nextTick, onMounted, onUnmounted, ref} from 'vue';
 import {invoke} from "@tauri-apps/api/tauri";
 import {listen} from "@tauri-apps/api/event";
 import * as echarts from 'echarts';
@@ -62,16 +62,24 @@ const initListen = () => {
     }
 
     process_msg_map = msg_data["msg_pids"];
-    updateProcessCharts();
+    updateProcessChartsDom();
+    nextTick().then(() => {
+      updateProcessCharts();
+    });
   });
   listen_list.push(un_listen);
 };
 
-const updateProcessCharts = () => {
+const updateProcessChartsDom = () => {
   chartCpuAndMem = [];
   process_msg_map_ref.value = [];
   for (let pid in process_msg_map) {
     process_msg_map_ref.value.push(pid);
+  }
+}
+
+const updateProcessCharts = () => {
+  for (let pid in process_msg_map) {
     let item = process_msg_map[pid];
     let cpuChart;
     let memChart;

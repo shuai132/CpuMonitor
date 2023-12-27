@@ -47,20 +47,48 @@ impl MsgData {
     pub fn create_test_data(&mut self) {
         self.clear();
         for i in 0..1000 {
-            let mut msg = CpuMsg::default();
-            msg.ave.timestamps = i;
-            msg.ave.name = "cpu".to_string();
-            msg.ave.usage = ((i as f32 / 10.0).sin() + 1.0) * 50.0;
+            {
+                let mut msg = CpuMsg::default();
+                msg.ave.timestamps = i;
+                msg.ave.name = "cpu".to_string();
+                msg.ave.usage = ((i as f32 / 10.0).sin() + 1.0) * 50.0;
 
-            for j in 0..4 {
-                let mut c = CpuInfo::default();
-                c.name = format!("cpu{}", j);
-                c.usage = (((i + j * 10) as f32 / 10.0).sin() + 1.0) * 50.0;
-                c.timestamps = i;
-                msg.cores.push(c);
+                for j in 0..4 {
+                    let mut c = CpuInfo::default();
+                    c.name = format!("cpu{}", j);
+                    c.usage = (((i + j * 10) as f32 / 10.0).sin() + 1.0) * 50.0;
+                    c.timestamps = i;
+                    msg.cores.push(c);
+                }
+                self.process_cpu_msg(msg);
             }
 
-            self.msg_cpus.push(msg);
+            {
+                let mut msg = ProcessMsg::default();
+                msg.timestamps = i;
+
+                // process
+                let mut p = ProcessInfo::default();
+                p.id = 100;
+                p.name = "app".to_string();
+
+                // threads and mem
+                for j in 0..4 {
+                    let mut t = ThreadInfo::default();
+                    t.id = j;
+                    t.name = format!("thread_{}", j);
+                    t.usage = (((i + j * 10) as f32 / 10.0).sin() + 1.0) * 50.0;
+                    t.timestamps = i;
+                    p.thread_infos.push(t);
+
+                    let mut m = MemInfo::default();
+                    m.rss = ((((i + j * 10) as f32 / 10.0).sin() + 1.0) * 50.0) as u64 + 1024;
+                    m.timestamps = i;
+                    p.mem_info = m;
+                }
+                msg.infos.push(p);
+                self.process_process_msg(msg);
+            }
         }
         self.has_preload_data = true;
     }
@@ -84,13 +112,13 @@ impl MsgData {
 
             for item in pInfo.thread_infos {
                 if let Some(threadInfo) = threadInfos.iter_mut().find(|v| v.id == item.id) {
-                    threadInfo.usage_sum += item.usage;
+                    threadInfo.usage_sum += item.usage as f64;
                     threadInfo.cpu_infos.push(item);
                 } else {
                     let id = item.id;
                     let usage_sum = item.usage;
                     let value = vec![item];
-                    threadInfos.push(ThreadInfoItem { id, usage_sum, cpu_infos: value });
+                    threadInfos.push(ThreadInfoItem { id, usage_sum: usage_sum as f64, cpu_infos: value });
                 }
             }
 

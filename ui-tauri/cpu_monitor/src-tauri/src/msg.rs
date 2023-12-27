@@ -17,7 +17,7 @@ pub struct CpuMsg {
 pub struct ThreadInfo {
     pub name: String,
     pub id: u64,
-    pub usage: f64,
+    pub usage: f32,
     pub timestamps: u64,
 }
 
