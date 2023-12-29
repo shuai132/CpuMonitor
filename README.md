@@ -4,6 +4,9 @@
 [![Build Status](https://github.com/shuai132/CpuMonitor/workflows/Ubuntu/badge.svg)](https://github.com/shuai132/CpuMonitor/actions?workflow=Ubuntu)
 [![Build Status](https://github.com/shuai132/CpuMonitor/workflows/Windows/badge.svg)](https://github.com/shuai132/CpuMonitor/actions?workflow=Windows)
 
+[![Build Status](https://github.com/shuai132/CpuMonitor/workflows/tauri/badge.svg)](https://github.com/shuai132/CpuMonitor/actions?workflow=tauri)
+[![Build Status](https://github.com/shuai132/CpuMonitor/workflows/cpu_monitor/badge.svg)](https://github.com/shuai132/CpuMonitor/actions?workflow=cpu_monitor)
+
 The main aims of this project is to monitor `RAM of process` and `CPU usage of each thread`,
 and draw their `curve graphs`.
 
