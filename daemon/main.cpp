@@ -260,16 +260,17 @@ static void updateProcess() {
   }
 }
 
-static bool updateProcessChange() {
+static void updateProcessChange() {
+  std::vector<ProcessKey> alreadyExit;
   for (auto& monitorPid : s_monitor_pids) {
-    auto& id = monitorPid.first;
-    auto pid = id.pid;
+    auto& process = monitorPid.first;
+    auto pid = process.pid;
     auto& tasks = monitorPid.second.tasks;
 
     const auto& taskRet = Utils::getTasksOfPid(pid);
     if (!taskRet.ok) {
-      printf("process exit! will wait...\n");
-      return false;
+      alreadyExit.push_back(process);
+      continue;
     }
     const auto& tasksNow = taskRet.ids;
 
@@ -299,7 +300,9 @@ static bool updateProcessChange() {
     }
   }
 
-  return true;
+  for (const auto& key : alreadyExit) {
+    s_monitor_pids.erase(key);
+  }
 }
 
 static bool addMonitorPid(PID_t pid) {
