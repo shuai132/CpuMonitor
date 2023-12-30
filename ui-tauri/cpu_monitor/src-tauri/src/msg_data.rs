@@ -1,7 +1,5 @@
-#![allow(non_snake_case, unused, private_interfaces)]
-
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +8,7 @@ use crate::msg::*;
 type ProcessKey = u64;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-struct ProcessValue {
+pub struct ProcessValue {
     pub name: String,
     pub thread_infos: Vec<ThreadInfoItem>,
     pub mem_infos: Vec<MemInfo>,
@@ -20,7 +18,7 @@ struct ProcessValue {
 type ThreadInfoKey = u64;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ThreadInfoItem {
+pub struct ThreadInfoItem {
     pub id: ThreadInfoKey,
     pub usage_sum: f64,
     pub cpu_infos: Vec<ThreadInfo>,
@@ -105,28 +103,28 @@ impl MsgData {
         if self.has_preload_data {
             return false;
         }
-        for pInfo in msg.infos {
-            let processValue = self.msg_pids.entry(pInfo.id).or_insert(ProcessValue::default());
-            let threadInfos = &mut processValue.thread_infos;
-            self.pid_current_thread_num.insert(pInfo.id, pInfo.thread_infos.len() as u32);
+        for p_info in msg.infos {
+            let p_value = self.msg_pids.entry(p_info.id).or_insert(ProcessValue::default());
+            let t_infos = &mut p_value.thread_infos;
+            self.pid_current_thread_num.insert(p_info.id, p_info.thread_infos.len() as u32);
 
-            for item in pInfo.thread_infos {
-                if let Some(threadInfo) = threadInfos.iter_mut().find(|v| v.id == item.id) {
-                    threadInfo.usage_sum += item.usage as f64;
-                    threadInfo.cpu_infos.push(item);
+            for item in p_info.thread_infos {
+                if let Some(t_info) = t_infos.iter_mut().find(|v| v.id == item.id) {
+                    t_info.usage_sum += item.usage as f64;
+                    t_info.cpu_infos.push(item);
                 } else {
                     let id = item.id;
                     let usage_sum = item.usage;
                     let value = vec![item];
-                    threadInfos.push(ThreadInfoItem { id, usage_sum: usage_sum as f64, cpu_infos: value });
+                    t_infos.push(ThreadInfoItem { id, usage_sum: usage_sum as f64, cpu_infos: value });
                 }
             }
 
-            threadInfos.sort_unstable_by(|a, b| a.usage_sum.partial_cmp(&b.usage_sum).unwrap_or(Ordering::Equal).reverse());
+            t_infos.sort_unstable_by(|a, b| a.usage_sum.partial_cmp(&b.usage_sum).unwrap_or(Ordering::Equal).reverse());
 
-            processValue.name = pInfo.name;
-            processValue.max_rss = processValue.max_rss.max(pInfo.mem_info.rss);
-            processValue.mem_infos.push(pInfo.mem_info);
+            p_value.name = p_info.name;
+            p_value.max_rss = p_value.max_rss.max(p_info.mem_info.rss);
+            p_value.mem_infos.push(p_info.mem_info);
         }
         true
     }
