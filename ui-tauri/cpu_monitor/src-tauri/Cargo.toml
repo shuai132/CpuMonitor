@@ -1,6 +1,6 @@
 [package]
 name = "cpu_monitor"
-version = "1.3.0"
+version = "1.3.1"
 description = "CpuMonitor"
 authors = ["liushuai"]
 license = ""
