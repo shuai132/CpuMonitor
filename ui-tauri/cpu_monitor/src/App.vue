@@ -25,11 +25,15 @@ const toast = Snackbar;
 
 const initListen = () => {
   invoke('init_process');
-  invoke('get_msg_data');
+  ui_get_msg_data();
 
   let un_listen = listen('on_msg_data', (event: any) => {
     msg_data = JSON.parse(event.payload);
     cpu_msg_list = msg_data["msg_cpus"];
+
+    if (cpu_msg_list.length == 0) {
+      return;
+    }
 
     // ave charts
     chartCpuAve.setOption({
@@ -638,7 +642,7 @@ const ui_get_msg_data = () => {
     <div class="ui-setting-div">
       <var-input v-model="ui_load_path_text"
                  class="ui-setting-input-path"
-                 placeholder="File Path"
+                 placeholder="File Name"
                  size="small"
                  type="text"
                  variant="outlined"/>
@@ -672,7 +676,7 @@ const ui_get_msg_data = () => {
     </div>
 
     <var-divider/>
-    <var-divider description="test"/>
+    <var-divider description="other"/>
 
     <div class="ui-setting-div">
       <var-button :color="ui_button_color" class="ui-setting-button" style="width: 257px" type="primary"
