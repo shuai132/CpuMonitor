@@ -18,6 +18,7 @@ let listen_list: any[] = [];
 
 let ui_config_dark = ref(false);
 let ui_config_smooth = ref(false);
+let ui_config_show_thread_max = ref(10);
 let ui_connect_status = ref("disconnected");
 
 Snackbar.allowMultiple(true)
@@ -145,7 +146,7 @@ const updateProcessCharts = () => {
           top: 26,
           width: "80%",
           // need `data` for sort
-          data: item["thread_infos"].slice(0, 10).map((item: any, _: any) => {
+          data: item["thread_infos"].slice(0, ui_config_show_thread_max.value).map((item: any, _: any) => {
             return `${item["id"]}: ${item["cpu_infos"][0]["name"]}`;
           }),
         },
@@ -156,7 +157,7 @@ const updateProcessCharts = () => {
             animation: false,
           },
         },
-        series: item["thread_infos"].slice(0, 10).map((item: any, _: any) => {
+        series: item["thread_infos"].slice(0, ui_config_show_thread_max.value).map((item: any, _: any) => {
           return {
             type: 'line',
             smooth: ui_config_smooth.value,
@@ -581,6 +582,21 @@ const ui_get_msg_data = () => {
         <span style="font-size: 18px; line-height: 30px; color: #808080;">Smooth</span>
       </var-space>
       <var-switch v-model="ui_config_smooth" :color=ui_button_color :size="25" @click='ui_get_msg_data'/>
+    </var-space>
+
+    <var-divider/>
+
+    <var-space justify="space-between">
+      <var-space :size="[0, 10]">
+        <img alt="" class="ui-setting-icon" src="/thread.svg">
+        <span style="font-size: 18px; line-height: 30px; color: #808080;">Show Threads</span>
+      </var-space>
+      <var-input v-model="ui_config_show_thread_max"
+                 placeholder="max"
+                 size="small"
+                 style="width: 60px; height: 0"
+                 type="number"
+                 variant="outlined"/>
     </var-space>
 
     <var-divider/>
