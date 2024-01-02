@@ -56,5 +56,18 @@ struct ProcessMsg {
 };
 MSG_SERIALIZE_DEFINE(ProcessMsg, infos, timestamps);
 
+struct PluginMsgMalloc {
+  int pid;
+  std::string text;
+  uint64_t timestamps = 0;
+};
+MSG_SERIALIZE_DEFINE(PluginMsgMalloc, pid, text, timestamps);
+
+struct PluginMsgMemInfo {
+  std::string text;
+  uint64_t timestamps = 0;
+};
+MSG_SERIALIZE_DEFINE(PluginMsgMemInfo, text, timestamps);
+
 }  // namespace msg
 }  // namespace cpu_monitor

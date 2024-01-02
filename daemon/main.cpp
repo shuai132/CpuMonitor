@@ -12,6 +12,7 @@
 #include "asio.hpp"
 #include "asio_net/rpc_server.hpp"
 #include "log.h"
+#include "utils/file_utils.h"
 #include "utils/string_utils.h"
 #include "utils/time_utils.h"
 
@@ -70,8 +71,8 @@ static void initRpcTask() {
   s_rpc->subscribe("add_pid", [](const std::string& pid) -> std::string {
     LOGD("add_pid: %s", pid.c_str());
 
-    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
-      return std::to_string(p.first.pid) == pid;
+    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
+      return std::to_string(item.first.pid) == pid;
     });
     if (iter != s_monitor_pids.cend()) {
       return "already added";
@@ -99,8 +100,8 @@ static void initRpcTask() {
 
   s_rpc->subscribe("add_name", [](const std::string& name) -> std::string {
     LOGD("add_name: %s", name.c_str());
-    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](auto& p) {
-      return p.first.name == name;
+    auto iter = std::find_if(s_monitor_pids.begin(), s_monitor_pids.end(), [&](const auto& item) {
+      return item.first.name == name;
     });
     if (iter != s_monitor_pids.cend()) {
       return "already added";
@@ -137,17 +138,43 @@ static void initRpcTask() {
     }
     return msg;
   });
-
-  s_rpc->subscribe("monitor_all", [] {
-
-  });
-
-  s_rpc->subscribe("set_update_interval", [] {
-
-  });
 }
 
-static void sendNowCpuInfos() {
+static void sendPluginsInfos() {
+  auto timestampsNow = utils::getTimestamps();
+
+  // malloc infos of pids
+  for (const auto& item : s_monitor_pids) {
+    auto pid = item.first.pid;
+
+    char filePath[64];
+    snprintf(filePath, sizeof(filePath), "/tmp/cpu_monitor/%d/malloc", pid);
+
+    bool file_ok;
+    auto text = file_utils::read_text_file(filePath, &file_ok);
+    if (file_ok) {
+      msg::PluginMsgMalloc msg;
+      msg.pid = pid;
+      msg.text = std::move(text);
+      msg.timestamps = timestampsNow;
+      s_rpc->cmd("/plugin/malloc")->msg(msg)->call();
+    }
+  }
+
+  // /proc/meminfo
+  {
+    bool file_ok;
+    auto text = file_utils::read_text_file("/proc/meminfo", &file_ok);
+    if (file_ok) {
+      msg::PluginMsgMemInfo msg;
+      msg.text = std::move(text);
+      msg.timestamps = timestampsNow;
+      s_rpc->cmd("/plugin/meminfo")->msg(msg)->call();
+    }
+  }
+}
+
+static void sendNowInfos() {
   if (!s_rpc) return;
   auto timestampsNow = utils::getTimestamps();
 
@@ -343,7 +370,8 @@ static void asyncNextUpdate() {
   s_timer_update->async_wait([](asio::error_code ec) {
     updateCpu();
     updateProcess();
-    sendNowCpuInfos();
+    sendPluginsInfos();
+    sendNowInfos();
     updateProcessChange();
     asyncNextUpdate();
   });
