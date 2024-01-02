@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +30,9 @@ pub struct MsgData {
     pub msg_pids: BTreeMap<ProcessKey, ProcessValue>,
     pub pid_current_thread_num: BTreeMap<u64, u32>,
 
+    pub plugin_mem_info: Vec<HashMap<String, u64>>,
+    pub plugin_malloc: Vec<HashMap<String, u64>>,
+
     #[serde(skip_serializing, skip_deserializing)]
     pub has_preload_data: bool,
 }
@@ -39,6 +42,8 @@ impl MsgData {
         self.msg_cpus.clear();
         self.msg_pids.clear();
         self.pid_current_thread_num.clear();
+        self.plugin_mem_info.clear();
+        self.plugin_malloc.clear();
         self.has_preload_data = false;
     }
 
@@ -127,6 +132,32 @@ impl MsgData {
             p_value.mem_infos.push(p_info.mem_info);
         }
         true
+    }
+
+    pub fn process_plugin_malloc(&mut self, msg: PluginMsgMalloc) {
+        let json_data = self.plugin_parser(msg.text, msg.timestamps);
+        self.plugin_malloc.push(json_data);
+    }
+
+    pub fn process_plugin_mem_info(&mut self, msg: PluginMsgMemInfo) {
+        let json_data = self.plugin_parser(msg.text, msg.timestamps);
+        self.plugin_mem_info.push(json_data);
+    }
+
+    fn plugin_parser(&mut self, text: String, timestamps: u64) -> HashMap<String, u64> {
+        let mut json_data = HashMap::new();
+        for line in text.lines() {
+            let parts: Vec<String> = line
+                .split(':')
+                .map(|s| s.trim().to_string())
+                .collect();
+            if parts.len() == 2 {
+                let value = parts[1].split(' ').collect::<Vec<&str>>()[0].parse::<u64>().unwrap_or_default();
+                json_data.insert(parts[0].to_string(), value);
+            }
+        }
+        json_data.insert("timestamps".to_string(), timestamps);
+        json_data
     }
 }
 

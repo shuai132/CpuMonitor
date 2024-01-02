@@ -193,6 +193,16 @@ pub async fn rpc_task_loop() {
         send_event("on_msg_data", serde_json::to_string(&*msg_data_clone).unwrap().as_str());
     });
 
+    let msg_data_clone = msg_data.clone();
+    rpc.subscribe("/plugin/malloc", move |msg: msg::PluginMsgMalloc| {
+        msg_data_clone.borrow_mut().process_plugin_malloc(msg);
+    });
+
+    let msg_data_clone = msg_data.clone();
+    rpc.subscribe("/plugin/meminfo", move |msg: msg::PluginMsgMemInfo| {
+        msg_data_clone.borrow_mut().process_plugin_mem_info(msg);
+    });
+
     let config = config_builder::RpcConfigBuilder::new().rpc(Some(rpc.clone())).build();
     let rpc_client = rpc_client::RpcClient::new(config);
     rpc_client.on_open(|_: Rc<Rpc>| {

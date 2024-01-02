@@ -7,6 +7,7 @@ import {Snackbar} from '@varlet/ui'
 
 let chartCpuAve: echarts.EChartsType;
 let chartCpuCores: echarts.EChartsType;
+let chartMemInfo: echarts.EChartsType;
 let chartCpuAndMem: echarts.EChartsType[] = [];
 
 let msg_data: any;
@@ -18,7 +19,8 @@ let listen_list: any[] = [];
 
 let ui_config_dark = ref(false);
 let ui_config_smooth = ref(false);
-let ui_config_show_thread_max = ref(10);
+let ui_config_show_thread_max = ref("10");
+let ui_config_mem_info_show_list = ["MemAvailable", "MemFree", "SwapCached"];
 let ui_connect_status = ref("disconnected");
 
 Snackbar.allowMultiple(true)
@@ -65,6 +67,25 @@ const initListen = () => {
           name: `${item["name"]}: ${item["usage"].toFixed(2)}%`,
           showSymbol: false,
         })),
+      });
+    }
+
+    // mem charts
+    {
+      let mem_info = msg_data["plugin_mem_info"];
+      chartMemInfo.setOption({
+        series: Object.keys(mem_info.slice(-1)[0]).filter(name => {
+          return ui_config_mem_info_show_list.includes(name)
+        }).map((name: any) => (
+            {
+              type: 'line',
+              smooth: ui_config_smooth.value,
+              data: mem_info.map((item: any) => {
+                return [new Date(item["timestamps"]), item[name].toFixed(2)];
+              }),
+              name: `${name}`,
+              showSymbol: false,
+            })),
       });
     }
 
@@ -122,7 +143,6 @@ const updateProcessCharts = () => {
       ];
       chart.setOption({
         title: {
-          // text: "cpu usages",
           text: `${item['name']}  pid: ${pid}  threads: ${msg_data["pid_current_thread_num"][pid]}`,
           textStyle: {
             fontSize: 15,
@@ -146,7 +166,7 @@ const updateProcessCharts = () => {
           top: 26,
           width: "80%",
           // need `data` for sort
-          data: item["thread_infos"].slice(0, ui_config_show_thread_max.value).map((item: any, _: any) => {
+          data: item["thread_infos"].slice(0, parseInt(ui_config_show_thread_max.value)).map((item: any, _: any) => {
             return `${item["id"]}: ${item["cpu_infos"][0]["name"]}`;
           }),
         },
@@ -157,7 +177,7 @@ const updateProcessCharts = () => {
             animation: false,
           },
         },
-        series: item["thread_infos"].slice(0, ui_config_show_thread_max.value).map((item: any, _: any) => {
+        series: item["thread_infos"].slice(0, parseInt(ui_config_show_thread_max.value)).map((item: any, _: any) => {
           return {
             type: 'line',
             smooth: ui_config_smooth.value,
@@ -261,11 +281,14 @@ const updateProcessCharts = () => {
 const initCharts = () => {
   const chartDomCpuAve = document.getElementById('chart-cpu-ave');
   const chartDomCpuCore = document.getElementById('chart-cpu-cores');
+  const chartDomMemInfo = document.getElementById('chart-mem-info');
   chartCpuAve = echarts.init(chartDomCpuAve);
   chartCpuCores = echarts.init(chartDomCpuCore);
+  chartMemInfo = echarts.init(chartDomMemInfo);
   window.onresize = () => {
     chartCpuAve.resize()
     chartCpuCores.resize()
+    chartMemInfo.resize()
     chartCpuAndMem.forEach(item => item.resize());
   };
   const dataZoomOption = [
@@ -285,7 +308,7 @@ const initCharts = () => {
   ];
   chartCpuAve.setOption({
     title: {
-      text: 'Cpu Ave Usages',
+      text: 'Cpu Ave Usage',
       textStyle: {
         fontSize: 15,
       },
@@ -321,7 +344,7 @@ const initCharts = () => {
 
   chartCpuCores.setOption({
     title: {
-      text: 'Cpu Cores Usages',
+      text: 'Cpu Cores Usage',
       textStyle: {
         fontSize: 15,
       },
@@ -356,7 +379,39 @@ const initCharts = () => {
     },
     animation: false,
   });
-  echarts.connect([chartCpuAve, chartCpuCores]);
+
+  chartMemInfo.setOption({
+    title: {
+      text: 'Memory Usage',
+      textStyle: {
+        fontSize: 15,
+      },
+      left: 'center',
+    },
+    xAxis: {
+      type: 'time'
+    },
+    dataZoom: dataZoomOption,
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: '{value} kB'
+      },
+    },
+    legend: {
+      top: 26,
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        animation: false,
+      },
+    },
+    animation: false,
+  });
+
+  echarts.connect([chartCpuAve, chartCpuCores, chartMemInfo]);
 };
 
 onMounted(() => {
@@ -388,6 +443,11 @@ const ui_clear_button = () => {
   });
   chartCpuCores.setOption({
     series: cpu_msg_list.slice(-1)[0]["cores"].map(() => ({
+      data: [],
+    })),
+  });
+  chartMemInfo.setOption({
+    series: ui_config_mem_info_show_list.map(() => ({
       data: [],
     })),
   });
@@ -516,6 +576,7 @@ const ui_get_msg_data = () => {
   <div>
     <div id="chart-cpu-ave" class="chart-view"></div>
     <div id="chart-cpu-cores" class="chart-view"></div>
+    <div id="chart-mem-info" class="chart-view"></div>
 
     <div v-for="pid in process_msg_map_ref">
       <var-divider/>

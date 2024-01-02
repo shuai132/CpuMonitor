@@ -43,3 +43,16 @@ pub struct ProcessMsg {
     pub infos: Vec<ProcessInfo>,
     pub timestamps: u64,
 }
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct PluginMsgMalloc {
+    pub pid: u64,
+    pub text: String,
+    pub timestamps: u64,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct PluginMsgMemInfo {
+    pub text: String,
+    pub timestamps: u64,
+}
