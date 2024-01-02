@@ -4,10 +4,12 @@ on:
   push:
     paths-ignore:
       - '**.md'
+      - 'daemon/**'
       - 'ui-tauri/**'
   pull_request:
     paths-ignore:
       - '**.md'
+      - 'daemon/**'
       - 'ui-tauri/**'
 
 jobs:

@@ -27,14 +27,16 @@ jobs:
         with:
           submodules: recursive
 
-      - name: CMake Build
+      - name: CMake Build X86
         run: |
           mkdir build_x86 && cd build_x86
           cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_UI=OFF -DCMAKE_EXE_LINKER_FLAGS="-static -s"
           make cpu_monitor -j2
           mv daemon/cpu_monitor cpu_monitor
           zip -r cpu_monitor_x86.zip cpu_monitor
-          cd ..
+
+      - name: CMake Build ARM
+        run: |
           mkdir build_arm && cd build_arm
           cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_UI=OFF -DCMAKE_EXE_LINKER_FLAGS="-static -s" -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++
           make cpu_monitor -j2

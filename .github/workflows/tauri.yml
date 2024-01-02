@@ -4,9 +4,13 @@ on:
   push:
     paths-ignore:
       - '**.md'
+      - 'daemon/**'
+      - 'ui/**'
   pull_request:
     paths-ignore:
       - '**.md'
+      - 'daemon/**'
+      - 'ui/**'
 
 jobs:
   test-tauri:
@@ -36,9 +40,23 @@ jobs:
 
       - name: install frontend dependencies
         working-directory: ui-tauri/cpu_monitor
-        run: yarn install
+        run: npm install
 
+      # draft tauri app
       - uses: tauri-apps/tauri-action@v0
+        if: ${{ !startsWith(github.event.ref, 'refs/tags/') }}
+        env:
+          working-directory: ui-tauri/cpu_monitor
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: draft-v__VERSION__
+          releaseName: 'draft-v__VERSION__'
+          releaseDraft: true
+          prerelease: true
+
+      # release tauri app
+      - uses: tauri-apps/tauri-action@v0
+        if: startsWith(github.event.ref, 'refs/tags/')
         env:
           working-directory: ui-tauri/cpu_monitor
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
