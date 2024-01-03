@@ -19,8 +19,7 @@ serde_json = "1.0"
 lazy_static = "1.4.0"
 log = "0.4"
 env_logger = "0.10.0"
-rpc-core = { path = "../../../thirdparty/asio_net/include/asio_net/rpc_core/rust/src/core" }
-rpc-core-net = { path = "../../../thirdparty/asio_net/include/asio_net/rpc_core/rust/src/net" }
+rpc-core = { path = "thirdparty/rpc_core/rust", features = ["net"] }
 tokio = { version = "1", features = ["rt"] }
 dirs = "5.0.1"
 

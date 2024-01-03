@@ -7,3 +7,6 @@
 [submodule "thirdparty/asio"]
 	path = thirdparty/asio
 	url = git@github.com:chriskohlhoff/asio.git
+[submodule "ui-tauri/cpu_monitor/src-tauri/thirdparty/rpc_core"]
+	path = ui-tauri/cpu_monitor/src-tauri/thirdparty/rpc_core
+	url = git@github.com:shuai132/rpc_core

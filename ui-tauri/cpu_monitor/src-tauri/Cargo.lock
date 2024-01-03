@@ -400,7 +400,6 @@ dependencies = [
  "lazy_static",
  "log",
  "rpc-core",
- "rpc-core-net",
  "serde",
  "serde_json",
  "tauri",
@@ -2255,21 +2254,12 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
 name = "rpc-core"
-version = "0.2.2"
+version = "0.3.2"
 dependencies = [
  "bitflags 2.4.0",
  "log",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "rpc-core-net"
-version = "0.2.2"
-dependencies = [
- "bitflags 2.4.0",
- "log",
- "rpc-core",
  "tokio",
  "tokio-stream",
 ]
