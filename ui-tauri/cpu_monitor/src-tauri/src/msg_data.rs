@@ -140,7 +140,8 @@ impl MsgData {
     }
 
     pub fn process_plugin_mem_info(&mut self, msg: PluginMsgMemInfo) {
-        let json_data = self.plugin_parser(msg.text, msg.timestamps);
+        let mut json_data = self.plugin_parser(msg.text, msg.timestamps);
+        json_data.insert("SwapUsed".to_string(), json_data["SwapTotal"] - json_data["SwapFree"]);
         self.plugin_mem_info.push(json_data);
     }
 

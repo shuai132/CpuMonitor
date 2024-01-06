@@ -20,7 +20,7 @@ let listen_list: any[] = [];
 let ui_config_dark = ref(false);
 let ui_config_smooth = ref(false);
 let ui_config_show_thread_max = ref("10");
-let ui_config_mem_info_show_list = ["MemAvailable", "MemFree", "SwapCached"];
+let ui_config_mem_info_show_list = ["MemAvailable", "MemFree", "SwapUsed"];
 let ui_connect_status = ref("disconnected");
 
 Snackbar.allowMultiple(true)
