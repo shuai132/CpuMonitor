@@ -15,12 +15,12 @@
 #include "utils/file_utils.h"
 #include "utils/string_utils.h"
 #include "utils/time_utils.h"
+#include "version.h"
 
 using namespace cpu_monitor;
 
 // all argv
 struct {
-  bool h = false;
   std::string all_names;
   std::string all_pids;
   uint32_t d_update_interval_ms = 1000;
@@ -67,6 +67,10 @@ static bool addMonitorPidByName(const std::string& name);
 static void initRpcTask() {
   using namespace rpc_core;
   s_rpc = rpc::create();
+
+  s_rpc->subscribe("get_version", []() -> std::string {
+    return CPU_MONITOR_VERSION;
+  });
 
   s_rpc->subscribe("add_pid", [](const std::string& pid) -> std::string {
     LOGD("add_pid: %s", pid.c_str());
@@ -141,6 +145,7 @@ static void initRpcTask() {
 }
 
 static void sendPluginsInfos() {
+  if (!s_rpc) return;
   auto timestampsNow = utils::getTimestamps();
 
   // malloc infos of pids
@@ -403,6 +408,7 @@ static void runApp() {
 static void showHelp() {
   printf(R"(Usage:
 -h : 打印此帮助
+-v : 打印版本
 -d : 刷新间隔/ms 默认1000
 -s : 以服务方式启动 配合GUI使用
 -p : 指定开启的服务端口号
@@ -418,10 +424,15 @@ int main(int argc, char** argv) {
   }
 
   int ret;
-  while ((ret = getopt(argc, argv, "h::d:s::p:c::i:n:")) != -1) {
+  while ((ret = getopt(argc, argv, "h:v::d:s::p:c::i:n:")) != -1) {
     switch (ret) {
       case 'h': {
-        s_argv.h = true;
+        showHelp();
+        return 0;
+      } break;
+      case 'v': {
+        printf("cpu_monitor: %s\n", CPU_MONITOR_VERSION);
+        return 0;
       } break;
       case 'd': {
         s_argv.d_update_interval_ms = std::stoul(optarg, nullptr, 10);
@@ -444,14 +455,10 @@ int main(int argc, char** argv) {
         s_argv.all_names = optarg;
       } break;
       default: {
-        s_argv.h = true;
+        showHelp();
+        return 0;
       } break;
     }
-  }
-
-  if (s_argv.h) {
-    showHelp();
-    return 0;
   }
 
   s_monitor_cpu = std::make_unique<CpuMonitor>();

@@ -99,6 +99,9 @@ const initListen = () => {
 
   listen_list.push(listen('on_status', (event: any) => {
     ui_connect_status.value = event.payload;
+    if (event.payload == "connected") {
+      check_version();
+    }
   }));
 };
 
@@ -414,9 +417,21 @@ const initCharts = () => {
   echarts.connect([chartCpuAve, chartCpuCores, chartMemInfo]);
 };
 
+function check_version() {
+  invoke('rpc', {
+    command: "get_version",
+    message: "",
+  }).then((result: any) => {
+    ui_connect_status.value += `: ${result}`
+    toast.success("cpu_monitor version: " + result);
+  }).catch((_: any) => {
+  });
+}
+
 onMounted(() => {
   initListen();
   initCharts();
+  ui_fetch_status();
   ui_get_msg_data();
 });
 
@@ -548,6 +563,13 @@ const ui_del_pid_button = () => {
     toast.success(result);
   }).catch((reason: any) => {
     toast.error(reason);
+  });
+};
+
+const ui_fetch_status = () => {
+  return invoke('ctrl', {
+    command: "fetch_status",
+    message: "",
   });
 };
 

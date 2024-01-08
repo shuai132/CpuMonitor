@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use lazy_static::lazy_static;
 use log::{debug, info};
-use rpc_core::rpc::Rpc;
 use rpc_core::net::config_builder;
 use rpc_core::net::rpc_client;
+use rpc_core::rpc::{Rpc, RpcProto};
 use tauri::Window;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::{mpsc, Mutex, Notify};
@@ -112,11 +112,12 @@ async fn load_data_from_file(msg_data: Rc<RefCell<MsgData>>, path: String) -> to
 }
 
 fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>, rpc_client: Rc<rpc_client::RpcClient>) {
+    let rpc_clone = rpc.clone();
     tokio::task::spawn_local(async move {
         let mut rx = RPC_CHANNEL.rx1.lock().await;
         loop {
             let param = rx.recv().await.unwrap();
-            let result = rpc.cmd(param.cmd).msg(param.msg).future::<String>().await;
+            let result = rpc_clone.cmd(param.cmd).msg(param.msg).future::<String>().await;
             RPC_CHANNEL.tx2.lock().await.send(result).await.unwrap();
         }
     });
@@ -150,6 +151,12 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>, rpc_client:
                 }
                 "get_msg_data" => {
                     send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
+                    CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
+                }
+                "fetch_status" => {
+                    let status = if rpc.is_ready() { "connected" } else { "disconnected" };
+                    send_event("on_status", status);
+                    CTRL_CHANNEL.tx2.lock().await.send(Ok(status.to_string())).await.unwrap();
                 }
                 "set_ip_addr" => {
                     msg_data.borrow_mut().clear();
