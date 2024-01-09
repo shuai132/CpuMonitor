@@ -65,7 +65,11 @@ bool TaskMonitor::update() {
 
   // linux thread name like: (cpu_monitor)
   // remove the `()`
-  name = stat.name.substr(1, stat.name.size() - 2);
+  if (stat.name.size() >= 2 && stat.name[0] == '(') {
+    name = stat.name.substr(1, stat.name.size() - 2);
+  } else {
+    name = stat.name;
+  }
 
   // skip calculate usage
   if (!totalTimeImpl_) return false;
