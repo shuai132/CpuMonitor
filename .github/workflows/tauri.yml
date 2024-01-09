@@ -49,8 +49,8 @@ jobs:
           working-directory: ui-tauri/cpu_monitor
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: draft-v__VERSION__
-          releaseName: 'draft-v__VERSION__'
+          tagName: app-draft
+          releaseName: 'app-draft'
           releaseDraft: true
           prerelease: true
 
