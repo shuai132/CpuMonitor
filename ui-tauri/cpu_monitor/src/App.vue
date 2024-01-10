@@ -22,6 +22,7 @@ let ui_config_smooth = ref(false);
 let ui_config_show_thread_max = ref("10");
 let ui_config_mem_info_show_list = ["MemAvailable", "MemFree", "SwapUsed"];
 let ui_connect_status = ref("disconnected");
+let ui_config_show_cpu_cores = ref(false);
 
 Snackbar.allowMultiple(true)
 const toast = Snackbar;
@@ -36,6 +37,15 @@ const initListen = () => {
 
     if (cpu_msg_list.length == 0) {
       return;
+    }
+
+    // cpu cores visible
+    const should_show_cores = cpu_msg_list.slice(-1)[0]["cores"].length > 1;
+    if (ui_config_show_cpu_cores.value != should_show_cores) {
+      ui_config_show_cpu_cores.value = should_show_cores;
+      nextTick().then(() => {
+        chartCpuCores.resize();
+      });
     }
 
     // ave charts
@@ -71,8 +81,8 @@ const initListen = () => {
     }
 
     // mem charts
-    {
-      let mem_info = msg_data["plugin_mem_info"];
+    const mem_info = msg_data["plugin_mem_info"];
+    if (mem_info.length > 0) {
       chartMemInfo.setOption({
         series: Object.keys(mem_info.slice(-1)[0]).filter(name => {
           return ui_config_mem_info_show_list.includes(name)
@@ -597,7 +607,7 @@ const ui_get_msg_data = () => {
   <!--  chart view  -->
   <div>
     <div id="chart-cpu-ave" class="chart-view"></div>
-    <div id="chart-cpu-cores" class="chart-view"></div>
+    <div v-show="ui_config_show_cpu_cores" id="chart-cpu-cores" class="chart-view"></div>
     <div id="chart-mem-info" class="chart-view"></div>
 
     <div v-for="pid in process_msg_map_ref">
