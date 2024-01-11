@@ -128,57 +128,53 @@ fn rpc_message_channel(rpc: Rc<Rpc>, msg_data: Rc<RefCell<MsgData>>, rpc_client:
             let param = rx.recv().await.unwrap();
             let cmd = param.cmd;
             let msg = param.msg;
+            let mut result = Ok("ok".to_string());
             match cmd.as_str() {
                 "clear_data" => {
                     msg_data.borrow_mut().clear();
-                    CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
                 }
                 "save_data" => {
                     let path = msg;
                     let json_data = serde_json::to_string_pretty(&*msg_data).unwrap();
-                    let result = save_data_to_file(json_data.as_bytes(), path).await.map_err(|e| e.to_string());
-                    CTRL_CHANNEL.tx2.lock().await.send(result).await.unwrap();
+                    result = save_data_to_file(json_data.as_bytes(), path).await.map_err(|e| e.to_string());
                 }
                 "load_data" => {
                     let path = msg;
-                    let result = load_data_from_file(msg_data.clone(), path).await.map_err(|e| e.to_string());
-                    CTRL_CHANNEL.tx2.lock().await.send(result).await.unwrap();
+                    result = load_data_from_file(msg_data.clone(), path).await.map_err(|e| e.to_string());
                 }
                 "create_test_data" => {
                     msg_data.borrow_mut().create_test_data();
                     send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
-                    CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
                 }
                 "get_msg_data" => {
                     send_event("on_msg_data", serde_json::to_string(&*msg_data).unwrap().as_str());
-                    CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
                 }
                 "fetch_status" => {
                     let status = if rpc.is_ready() { "connected" } else { "disconnected" };
                     send_event("on_status", status);
-                    CTRL_CHANNEL.tx2.lock().await.send(Ok(status.to_string())).await.unwrap();
+                    result = Ok(status.to_string());
                 }
                 "set_ip_addr" => {
                     msg_data.borrow_mut().clear();
                     let addr: Vec<&str> = msg.split(":").collect();
                     if addr.len() != 2 {
-                        CTRL_CHANNEL.tx2.lock().await.send(Ok(format!("format error: {msg}"))).await.unwrap();
+                        result = Ok(format!("format error: {msg}"));
                     } else {
                         match addr[1].parse::<u16>() {
                             Ok(port) => {
                                 rpc_client.open(addr[0], port);
-                                CTRL_CHANNEL.tx2.lock().await.send(Ok("ok".to_string())).await.unwrap();
                             }
                             Err(_) => {
-                                CTRL_CHANNEL.tx2.lock().await.send(Ok(format!("port invalid: {}", addr[1]))).await.unwrap();
+                                result = Ok(format!("port invalid: {}", addr[1]));
                             }
                         }
                     }
                 }
                 _ => {
-                    CTRL_CHANNEL.tx2.lock().await.send(Err(format!("no such ctrl method: {cmd}"))).await.unwrap();
+                    result = Err(format!("no such ctrl method: {cmd}"));
                 }
             }
+            CTRL_CHANNEL.tx2.lock().await.send(result).await.unwrap();
         }
     });
 }
